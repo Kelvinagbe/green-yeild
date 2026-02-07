@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, ComponentType } from 'react';
+import { useState } from 'react';
 import { TrendingUp, Lock, Target, Smartphone, Gem, Users } from 'lucide';
 
-type IconProps = { size?: number; strokeWidth?: number };
-
-const features: { icon: ComponentType<IconProps>; title: string; desc: string }[] = [
+const features = [
   { icon: TrendingUp, title: 'AI-Powered Analytics', desc: 'Leverage cutting-edge artificial intelligence to analyze market trends and optimize your portfolio in real-time.' },
   { icon: Lock, title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
   { icon: Target, title: 'Personalized Strategy', desc: 'Custom investment plans tailored to your risk tolerance, financial goals, and timeline.' },
@@ -90,7 +88,7 @@ export default function InvestmentSite() {
 
       <header>
         <nav className="container">
-          <div className="logo">Meridian</div>
+          <div className="logo">Green Yield</div>
           <ul className="nav-links">
             {['Home', 'Features', 'Investments', 'About', 'Contact'].map(link => (
               <li key={link} className="nav-link" onClick={() => setNav(link.toLowerCase())}>{link}</li>
@@ -120,10 +118,10 @@ export default function InvestmentSite() {
       </div>
 
       <section className="container">
-        <h2>Why Choose Meridian</h2>
+        <h2>Why Choose Green Yield</h2>
         <div className="grid">
           {features.map((f, i) => {
-            const Icon = f.icon;
+            const Icon = f.icon as any;
             return (
               <div key={i} className="card">
                 <div className="icon"><Icon size={48} strokeWidth={1.5} /></div>
@@ -153,7 +151,7 @@ export default function InvestmentSite() {
       <footer>
         <div className="container footer-grid">
           <div>
-            <div className="f-title">About Meridian</div>
+            <div className="f-title">About Green Yield</div>
             <p>Leading investment platform combining traditional finance with cutting-edge technology.</p>
           </div>
           <div>
@@ -170,13 +168,13 @@ export default function InvestmentSite() {
           </div>
           <div>
             <div className="f-title">Contact</div>
-            <p>📧 invest@meridian.com</p>
-            <p>📞 1-800-MERIDIAN</p>
+            <p>📧 invest@greenyield.com</p>
+            <p>📞 1-800-GREENYIELD</p>
             <p>📍 New York, NY 10004</p>
           </div>
         </div>
         <div className="container f-bottom">
-          <p>&copy; 2026 Meridian Investments. All rights reserved. | Securities offered through regulated entities.</p>
+          <p>&copy; 2026 Green Yield Investments. All rights reserved. | Securities offered through regulated entities.</p>
         </div>
       </footer>
     </div>
