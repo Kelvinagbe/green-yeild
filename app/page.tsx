@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, createElement, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const features = [
   { icon: 'TrendingUp', title: 'AI-Powered Analytics', desc: 'Leverage cutting-edge artificial intelligence to analyze market trends and optimize your portfolio in real-time.' },
-  { icon: 'Lock', title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
+  { icon: 'Shield', title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
   { icon: 'Target', title: 'Personalized Strategy', desc: 'Custom investment plans tailored to your risk tolerance, financial goals, and timeline.' },
   { icon: 'Smartphone', title: 'Mobile Trading', desc: 'Manage your portfolio on-the-go with our intuitive mobile app. Trade anytime, anywhere.' },
   { icon: 'Gem', title: 'Diversified Assets', desc: 'Access stocks, bonds, ETFs, crypto, and alternative investments all in one platform.' },
@@ -19,168 +19,233 @@ const stats = [
 ];
 
 const plans = [
-  { name: 'Conservative Growth', apy: '5-7% APY', items: ['Low-risk portfolio', 'Bonds & blue-chip stocks', 'Stable returns', 'Ideal for beginners'] },
-  { name: 'Balanced Portfolio', apy: '8-12% APY', items: ['Medium-risk approach', 'Mixed asset allocation', 'Growth & stability', 'Most popular choice'] },
-  { name: 'Aggressive Growth', apy: '15-20% APY', items: ['High-growth potential', 'Tech & emerging markets', 'Active management', 'For experienced investors'] },
-  { name: 'Crypto Frontier', apy: '20-35% APY', items: ['Cryptocurrency focus', 'DeFi & Web3 assets', 'High volatility', 'Maximum growth potential'] }
+  { name: 'Conservative Growth', apy: '5-7%', risk: 'Low Risk', items: ['Bonds & blue-chip stocks', 'Stable returns', 'Capital preservation', 'Ideal for beginners'] },
+  { name: 'Balanced Portfolio', apy: '8-12%', risk: 'Medium Risk', items: ['Mixed asset allocation', 'Growth & stability', 'Diversified strategy', 'Most popular choice'] },
+  { name: 'Aggressive Growth', apy: '15-20%', risk: 'High Risk', items: ['Tech & emerging markets', 'Active management', 'Maximum returns', 'For experienced investors'] },
+  { name: 'Crypto Frontier', apy: '20-35%', risk: 'Very High Risk', items: ['DeFi & Web3 assets', 'High volatility', 'Cutting-edge tech', 'Maximum growth potential'] }
+];
+
+const testimonials = [
+  { name: 'Sarah Mitchell', role: 'Tech Entrepreneur', text: 'Green Yield transformed my investment strategy. Their AI-driven insights helped me achieve 18% returns last year.' },
+  { name: 'James Rodriguez', role: 'Retired Executive', text: 'The personalized approach and expert advisors gave me confidence in my retirement planning. Highly recommend!' },
+  { name: 'Emily Chen', role: 'Small Business Owner', text: 'Easy to use platform with transparent fees. The mobile app makes managing my portfolio incredibly convenient.' }
 ];
 
 export default function InvestmentSite() {
-  const [nav, setNav] = useState('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Initialize lucide icons after component mounts
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
   }, []);
 
   return (
-    <div className="min-h-screen bg-dark text-light">
+    <div className="min-h-screen bg-[#0a0f0d] text-[#e8f5e9] overflow-x-hidden">
       <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-      <style jsx global>{`
-        :root {
-          --dark: #1a1a1a;
-          --darker: #0f0f0f;
-          --card: #242424;
-          --green: #00ff88;
-          --gray: #b8b8b8;
-          --border: #333;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; background: var(--dark); color: var(--gray); }
-        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
-        header { background: var(--darker); padding: 1.5rem 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-        nav { display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.8rem; font-weight: 700; color: var(--green); }
-        .nav-links { display: flex; gap: 2rem; list-style: none; }
-        .nav-link { color: var(--gray); cursor: pointer; transition: color 0.3s; }
-        .nav-link:hover { color: var(--green); }
-        .hero { text-align: center; padding: 6rem 2rem; }
-        h1 { font-size: 3.5rem; margin-bottom: 1.5rem; color: var(--green); }
-        h2 { font-size: 2.5rem; margin-bottom: 3rem; text-align: center; color: var(--green); }
-        h3 { color: var(--green); font-size: 1.4rem; margin-bottom: 1rem; }
-        .hero-text { font-size: 1.2rem; color: var(--gray); margin-bottom: 2.5rem; max-width: 700px; margin-left: auto; margin-right: auto; }
-        .cta { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
-        .btn { padding: 1rem 2.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .btn-primary { background: var(--green); color: var(--darker); }
-        .btn-primary:hover { background: #00dd77; transform: translateY(-2px); }
-        .btn-secondary { background: #2a2a2a; color: var(--green); border: 2px solid var(--green); }
-        .btn-secondary:hover { background: var(--green); color: var(--darker); }
-        .stats { background: var(--darker); padding: 4rem 2rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
-        .stat { text-align: center; }
-        .stat-val { font-size: 3rem; color: var(--green); font-weight: 700; margin-bottom: 0.5rem; }
-        section { padding: 5rem 2rem; }
-        .card { background: var(--card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); transition: all 0.3s; }
-        .card:hover { transform: translateY(-5px); border-color: var(--green); box-shadow: 0 10px 30px rgba(0, 255, 136, 0.1); }
-        .icon { margin-bottom: 1rem; color: var(--green); }
-        .apy { font-size: 2rem; color: var(--green); font-weight: 700; margin-bottom: 1.5rem; }
-        ul { list-style: none; }
-        li { padding: 0.5rem 0 0.5rem 1.5rem; position: relative; }
-        li:before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: bold; }
-        footer { background: var(--darker); padding: 3rem 2rem; border-top: 1px solid var(--border); }
-        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
-        .f-title { color: var(--green); margin-bottom: 1rem; font-weight: 600; }
-        .f-link { color: var(--gray); display: block; margin-bottom: 0.5rem; cursor: pointer; transition: color 0.3s; }
-        .f-link:hover { color: var(--green); }
-        .f-bottom { text-align: center; padding-top: 2rem; border-top: 1px solid var(--border); color: #777; }
-        @media (max-width: 768px) {
-          h1 { font-size: 2.5rem; }
-          .nav-links { gap: 1rem; flex-wrap: wrap; }
-          .cta { flex-direction: column; align-items: center; }
-          .btn { width: 100%; max-width: 300px; }
-        }
-      `}</style>
 
-      <header>
-        <nav className="container">
-          <div className="logo">Green Yield</div>
-          <ul className="nav-links">
-            {['Home', 'Features', 'Investments', 'About', 'Contact'].map(link => (
-              <li key={link} className="nav-link" onClick={() => setNav(link.toLowerCase())}>{link}</li>
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-lg border-b border-green-900/20">
+        <nav className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="text-2xl font-bold bg-gradient-to-r from-green-700 to-green-500 bg-clip-text text-transparent">
+            Green Yield
+          </div>
+          
+          <button 
+            className="md:hidden text-green-500 text-2xl"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            ☰
+          </button>
+
+          <ul className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-8 absolute md:relative top-16 md:top-0 left-0 md:left-auto w-full md:w-auto bg-[#0a0f0d]/98 md:bg-transparent p-8 md:p-0 items-center`}>
+            {['Home', 'Features', 'Plans', 'Testimonials', 'Contact'].map(link => (
+              <li 
+                key={link} 
+                className="text-green-300 hover:text-green-400 cursor-pointer transition-all font-medium relative group"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-green-400 group-hover:w-full transition-all duration-300"></span>
+              </li>
             ))}
           </ul>
         </nav>
       </header>
 
-      <section className="hero">
-        <h1>Invest in Your Future Today</h1>
-        <p className="hero-text">Advanced portfolio management powered by AI-driven insights. Grow your wealth with confidence through data-driven investment strategies.</p>
-        <div className="cta">
-          <button className="btn btn-primary">Start Investing</button>
-          <button className="btn btn-secondary">View Portfolio Options</button>
+      {/* Hero */}
+      <section className="pt-32 pb-20 px-6 text-center relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-green-700/10 rounded-full blur-3xl"></div>
+        <div className="max-w-5xl mx-auto relative z-10">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 bg-gradient-to-r from-green-400 to-green-700 bg-clip-text text-transparent leading-tight">
+            Invest in Your Future Today
+          </h1>
+          <p className="text-xl md:text-2xl text-green-300 mb-10 max-w-3xl mx-auto">
+            Advanced portfolio management powered by AI-driven insights. Grow your wealth with confidence through data-driven investment strategies.
+          </p>
+          <div className="flex flex-col md:flex-row gap-4 justify-center">
+            <button className="px-10 py-4 bg-gradient-to-r from-green-700 to-green-600 text-white rounded-full font-semibold hover:shadow-2xl hover:shadow-green-700/50 hover:-translate-y-1 transition-all duration-300">
+              Start Investing
+            </button>
+            <button className="px-10 py-4 border-2 border-green-700 text-green-400 rounded-full font-semibold hover:bg-green-700 hover:text-white hover:-translate-y-1 transition-all duration-300">
+              View Portfolio Options
+            </button>
+          </div>
         </div>
       </section>
 
-      <div className="stats">
-        <div className="container grid">
+      {/* Stats */}
+      <section className="bg-gradient-to-br from-[#112214]/80 to-[#0a0f0d]/90 border-y border-green-900/20 py-16 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((s, i) => (
-            <div key={i} className="stat">
-              <div className="stat-val">{s.value}</div>
-              <div>{s.label}</div>
+            <div 
+              key={i} 
+              className="text-center p-8 bg-green-900/5 rounded-2xl border border-green-900/10 hover:border-green-900/30 hover:-translate-y-2 transition-all duration-300"
+            >
+              <div className="text-4xl md:text-5xl font-extrabold text-green-400 mb-2">{s.value}</div>
+              <div className="text-green-300 text-lg">{s.label}</div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <section className="container">
-        <h2>Why Choose Green Yield</h2>
-        <div className="grid">
-          {features.map((f, i) => (
-            <div key={i} className="card">
-              <div className="icon">
-                <i data-lucide={f.icon} data-lucide-size="48" data-lucide-stroke-width="1.5"></i>
+      {/* Features */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-center text-green-400 mb-4">
+            Why Choose Green Yield
+          </h2>
+          <p className="text-center text-green-300 text-lg max-w-3xl mx-auto mb-12">
+            Experience the power of intelligent investing with our comprehensive suite of features designed to maximize your returns.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => (
+              <div 
+                key={i} 
+                className="bg-gradient-to-br from-[#112214]/60 to-[#0a0f0d]/80 p-8 rounded-3xl border border-green-900/20 hover:border-green-700/50 hover:-translate-y-3 hover:shadow-2xl hover:shadow-green-900/20 transition-all duration-400 relative overflow-hidden group"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-700 to-green-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-400"></div>
+                <div className="text-green-400 mb-4">
+                  <i data-lucide={f.icon} className="w-12 h-12" data-lucide-size="48" data-lucide-stroke-width="1.5"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-green-400 mb-3">{f.title}</h3>
+                <p className="text-green-200 leading-relaxed">{f.desc}</p>
               </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="container">
-        <h2>Investment Plans</h2>
-        <div className="grid">
-          {plans.map((p, i) => (
-            <div key={i} className="card">
-              <h3>{p.name}</h3>
-              <div className="apy">{p.apy}</div>
-              <ul>
-                {p.items.map((item, idx) => <li key={idx}>{item}</li>)}
-              </ul>
-            </div>
-          ))}
+      {/* Plans */}
+      <section className="py-20 px-6 relative overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-green-700/10 rounded-full blur-3xl"></div>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <h2 className="text-4xl md:text-5xl font-bold text-center text-green-400 mb-4">
+            Investment Plans
+          </h2>
+          <p className="text-center text-green-300 text-lg max-w-3xl mx-auto mb-12">
+            Choose the investment strategy that aligns with your financial goals and risk tolerance.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {plans.map((p, i) => (
+              <div 
+                key={i} 
+                className="bg-gradient-to-br from-[#112214]/80 to-[#0a0f0d]/90 p-8 rounded-3xl border border-green-900/20 hover:border-green-700 hover:-translate-y-3 hover:shadow-2xl hover:shadow-green-900/30 transition-all duration-400 flex flex-col"
+              >
+                <div className="border-b border-green-900/20 pb-6 mb-6">
+                  <span className="inline-block px-4 py-1 bg-green-900/20 text-green-300 rounded-full text-sm mb-4">
+                    {p.risk}
+                  </span>
+                  <h3 className="text-2xl font-semibold text-green-400 mb-4">{p.name}</h3>
+                  <div className="text-4xl font-extrabold text-green-400 mb-1">{p.apy}</div>
+                  <div className="text-sm text-green-300">Annual Percentage Yield</div>
+                </div>
+                <ul className="space-y-3 mb-6 flex-grow">
+                  {p.items.map((item, idx) => (
+                    <li key={idx} className="flex items-start text-green-200">
+                      <span className="text-green-400 font-bold text-lg mr-3">✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button className="w-full px-6 py-3 bg-gradient-to-r from-green-700 to-green-600 text-white rounded-full font-semibold hover:shadow-xl hover:shadow-green-700/30 transition-all duration-300">
+                  Get Started
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <footer>
-        <div className="container footer-grid">
-          <div>
-            <div className="f-title">About Green Yield</div>
-            <p>Leading investment platform combining traditional finance with cutting-edge technology.</p>
-          </div>
-          <div>
-            <div className="f-title">Quick Links</div>
-            {['Home', 'Features', 'Investment Plans', 'Contact Us'].map(l => (
-              <div key={l} className="f-link" onClick={() => setNav(l.toLowerCase())}>{l}</div>
+      {/* Testimonials */}
+      <section className="py-20 px-6 bg-gradient-to-br from-[#112214]/50 to-[#0a0f0d]/70">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-center text-green-400 mb-4">
+            What Our Clients Say
+          </h2>
+          <p className="text-center text-green-300 text-lg max-w-3xl mx-auto mb-12">
+            Join thousands of satisfied investors who trust Green Yield with their financial future.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <div 
+                key={i} 
+                className="bg-green-900/5 p-8 rounded-3xl border border-green-900/20 hover:border-green-900/40 hover:-translate-y-2 transition-all duration-300"
+              >
+                <p className="text-green-200 text-lg italic leading-relaxed mb-6">
+                  "{t.text}"
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-700 to-green-500 flex items-center justify-center text-white font-bold text-xl">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="text-green-400 font-semibold">{t.name}</h4>
+                    <div className="text-green-300 text-sm">{t.role}</div>
+                  </div>
+                </div>
+              </div>
             ))}
-          </div>
-          <div>
-            <div className="f-title">Resources</div>
-            {['Investment Guide', 'Market Analysis', 'FAQ', 'Blog'].map(r => (
-              <div key={r} className="f-link">{r}</div>
-            ))}
-          </div>
-          <div>
-            <div className="f-title">Contact</div>
-            <p>📧 invest@greenyield.com</p>
-            <p>📞 1-800-GREENYIELD</p>
-            <p>📍 New York, NY 10004</p>
           </div>
         </div>
-        <div className="container f-bottom">
-          <p>&copy; 2026 Green Yield Investments. All rights reserved. | Securities offered through regulated entities.</p>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#0a0f0d]/95 border-t border-green-900/20 py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+            <div>
+              <h4 className="text-green-400 font-semibold text-lg mb-4">About Green Yield</h4>
+              <p className="text-green-300">
+                Leading investment platform combining traditional finance with cutting-edge technology for optimal returns.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-green-400 font-semibold text-lg mb-4">Quick Links</h4>
+              {['Home', 'Features', 'Investment Plans', 'About Us', 'Contact'].map(l => (
+                <div key={l} className="text-green-300 hover:text-green-400 cursor-pointer mb-2 transition-colors">
+                  {l}
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4 className="text-green-400 font-semibold text-lg mb-4">Resources</h4>
+              {['Investment Guide', 'Market Analysis', 'Research Reports', 'FAQ', 'Blog'].map(r => (
+                <div key={r} className="text-green-300 hover:text-green-400 cursor-pointer mb-2 transition-colors">
+                  {r}
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4 className="text-green-400 font-semibold text-lg mb-4">Contact</h4>
+              <p className="text-green-300 mb-2">📧 invest@greenyield.com</p>
+              <p className="text-green-300 mb-2">📞 1-800-GREENYIELD</p>
+              <p className="text-green-300">📍 New York, NY 10004</p>
+            </div>
+          </div>
+          <div className="text-center pt-8 border-t border-green-900/20 text-green-300">
+            <p>&copy; 2026 Green Yield Investments. All rights reserved. | Securities offered through regulated entities.</p>
+          </div>
         </div>
       </footer>
     </div>
