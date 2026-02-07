@@ -23,7 +23,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#1c1c1c] text-white">
       <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
       {/* Check-in Modal */}
@@ -33,7 +33,7 @@ export default function Dashboard() {
           onClick={() => !isChecking && setShowCheckIn(false)}
         >
           <div 
-            className="bg-[#161616] border border-neutral-800 rounded-2xl p-6 max-w-md w-full transform transition-all duration-300 ease-out scale-100"
+            className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full transform transition-all duration-300 ease-out scale-100"
             onClick={(e) => e.stopPropagation()}
             style={{
               animation: 'slideUp 0.3s ease-out'
@@ -91,7 +91,7 @@ export default function Dashboard() {
                     className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${
                       isChecked
                         ? 'bg-green-500 text-white'
-                        : 'bg-neutral-800 text-neutral-400'
+                        : 'bg-[#3a3a3a] text-neutral-400'
                     }`}
                     style={isCheckingNow ? { animation: 'pulse 0.8s ease-in-out' } : {}}
                   >
@@ -115,7 +115,7 @@ export default function Dashboard() {
             </div>
 
             {/* Streak Info */}
-            <div className="bg-neutral-900 rounded-xl p-4 mb-6 flex items-center justify-between">
+            <div className="bg-[#333333] rounded-xl p-4 mb-6 flex items-center justify-between">
               <div>
                 <div className="text-sm text-neutral-400">Current Streak</div>
                 <div className="text-2xl font-semibold text-green-500">{checkedDays.length} days</div>
@@ -153,7 +153,7 @@ export default function Dashboard() {
                 <div className="text-green-500 font-medium mb-2">🎉 Week Complete!</div>
                 <button
                   onClick={() => setShowCheckIn(false)}
-                  className="w-full h-12 bg-neutral-800 hover:bg-neutral-700 rounded-xl font-medium transition-all"
+                  className="w-full h-12 bg-[#333333] hover:bg-[#3a3a3a] rounded-xl font-medium transition-all"
                 >
                   Close
                 </button>
@@ -164,13 +164,13 @@ export default function Dashboard() {
       )}
 
       {/* Header - Minimal */}
-      <header className="border-b border-neutral-800 bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-40">
+      <header className="border-b border-neutral-700 bg-[#1c1c1c]/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="text-lg font-semibold">Green Yield</div>
             
             <div className="flex items-center gap-4">
-              <button className="w-9 h-9 rounded-full bg-[#1a1a1a] hover:bg-[#222222] transition-all flex items-center justify-center">
+              <button className="w-9 h-9 rounded-full bg-[#2a2a2a] hover:bg-[#333333] transition-all flex items-center justify-center">
                 <i data-lucide="bell" className="w-4 h-4"></i>
               </button>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-sm font-medium">
@@ -193,13 +193,13 @@ export default function Dashboard() {
         {/* Balance Card - Thick Green Border */}
         <div className="relative group">
           <div className="absolute -inset-[2px] bg-gradient-to-br from-green-500 to-green-600 rounded-2xl sm:rounded-3xl opacity-100"></div>
-          <div className="relative bg-[#0a0a0a] rounded-2xl sm:rounded-3xl p-6 sm:p-8 space-y-6">
+          <div className="relative bg-[#1c1c1c] rounded-2xl sm:rounded-3xl p-6 sm:p-8 space-y-6">
             
             {/* Balance */}
             <div className="space-y-2">
               <div className="text-sm text-neutral-400">Total Balance</div>
               <div className="text-4xl sm:text-5xl font-semibold tracking-tight">
-                $487,250.00
+                ₦487,250.00
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="flex items-center gap-1 text-green-500">
@@ -216,7 +216,7 @@ export default function Dashboard() {
                 <i data-lucide="arrow-down-left" className="w-4 h-4"></i>
                 Deposit
               </button>
-              <button className="h-12 bg-[#1a1a1a] hover:bg-[#222222] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
+              <button className="h-12 bg-[#2a2a2a] hover:bg-[#333333] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
                 <i data-lucide="arrow-up-right" className="w-4 h-4"></i>
                 Withdraw
               </button>
@@ -225,13 +225,13 @@ export default function Dashboard() {
         </div>
 
         {/* Invest Button */}
-        <button className="w-full h-14 bg-[#161616] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-neutral-700 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+        <button className="w-full h-14 bg-[#262626] hover:bg-[#2a2a2a] border border-neutral-700 hover:border-neutral-600 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
           <i data-lucide="trending-up" className="w-5 h-5"></i>
           Start Investing
         </button>
 
         {/* Daily Check-in */}
-        <div className="bg-[#161616] border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-medium mb-1">Daily Check-in</h3>
@@ -249,7 +249,7 @@ export default function Dashboard() {
                 className={`flex-1 h-2 rounded-full transition-all ${
                   day <= 3
                     ? 'bg-green-500'
-                    : 'bg-[#1a1a1a]'
+                    : 'bg-[#3a3a3a]'
                 }`}
               ></div>
             ))}
@@ -264,25 +264,25 @@ export default function Dashboard() {
         </div>
 
         {/* Transaction History */}
-        <div className="bg-[#161616] border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-neutral-800">
+        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-neutral-700">
             <h3 className="font-medium">Recent Transactions</h3>
           </div>
           
-          <div className="divide-y divide-neutral-800">
+          <div className="divide-y divide-neutral-700">
             {[
               {
                 icon: 'arrow-down-left',
                 title: 'Deposit',
                 date: 'Today, 2:30 PM',
-                amount: '+$5,000',
+                amount: '+₦5,000',
                 positive: true,
               },
               {
                 icon: 'trending-up',
                 title: 'Buy AAPL',
                 date: 'Yesterday, 10:15 AM',
-                amount: '$2,450',
+                amount: '₦2,450',
                 positive: false,
               },
               {
@@ -296,22 +296,22 @@ export default function Dashboard() {
                 icon: 'dollar-sign',
                 title: 'Dividend Received',
                 date: '3 days ago',
-                amount: '+$324',
+                amount: '+₦324',
                 positive: true,
               },
               {
                 icon: 'arrow-up-right',
                 title: 'Withdrawal',
                 date: '5 days ago',
-                amount: '-$1,500',
+                amount: '-₦1,500',
                 positive: false,
               },
             ].map((transaction, index) => (
               <div
                 key={index}
-                className="p-4 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-[#1a1a1a] transition-colors"
+                className="p-4 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-[#2a2a2a] transition-colors"
               >
-                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-[#2a2a2a] flex items-center justify-center flex-shrink-0">
                   <i data-lucide={transaction.icon} className="w-4 h-4"></i>
                 </div>
                 
@@ -339,7 +339,7 @@ export default function Dashboard() {
             ))}
           </div>
           
-          <button className="w-full p-4 text-sm text-neutral-400 hover:text-white hover:bg-[#1a1a1a] transition-colors">
+          <button className="w-full p-4 text-sm text-neutral-400 hover:text-white hover:bg-[#2a2a2a] transition-colors">
             View All Transactions
           </button>
         </div>
