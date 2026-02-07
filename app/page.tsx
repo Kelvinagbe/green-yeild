@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, createElement } from 'react';
 import { TrendingUp, Lock, Target, Smartphone, Gem, Users } from 'lucide';
 
 const features = [
@@ -120,16 +120,13 @@ export default function InvestmentSite() {
       <section className="container">
         <h2>Why Choose Green Yield</h2>
         <div className="grid">
-          {features.map((f, i) => {
-            const Icon = f.icon as any;
-            return (
-              <div key={i} className="card">
-                <div className="icon"><Icon size={48} strokeWidth={1.5} /></div>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            );
-          })}
+          {features.map((f, i) => (
+            <div key={i} className="card">
+              <div className="icon">{createElement(f.icon as any, { size: 48, strokeWidth: 1.5 })}</div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
