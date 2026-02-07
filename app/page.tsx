@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, createElement } from 'react';
-import { TrendingUp, Lock, Target, Smartphone, Gem, Users } from 'lucide';
+import { useState, createElement, useEffect } from 'react';
 
 const features = [
-  { icon: TrendingUp, title: 'AI-Powered Analytics', desc: 'Leverage cutting-edge artificial intelligence to analyze market trends and optimize your portfolio in real-time.' },
-  { icon: Lock, title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
-  { icon: Target, title: 'Personalized Strategy', desc: 'Custom investment plans tailored to your risk tolerance, financial goals, and timeline.' },
-  { icon: Smartphone, title: 'Mobile Trading', desc: 'Manage your portfolio on-the-go with our intuitive mobile app. Trade anytime, anywhere.' },
-  { icon: Gem, title: 'Diversified Assets', desc: 'Access stocks, bonds, ETFs, crypto, and alternative investments all in one platform.' },
-  { icon: Users, title: 'Expert Advisors', desc: 'Get personalized guidance from certified financial advisors with decades of experience.' }
+  { icon: 'TrendingUp', title: 'AI-Powered Analytics', desc: 'Leverage cutting-edge artificial intelligence to analyze market trends and optimize your portfolio in real-time.' },
+  { icon: 'Lock', title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
+  { icon: 'Target', title: 'Personalized Strategy', desc: 'Custom investment plans tailored to your risk tolerance, financial goals, and timeline.' },
+  { icon: 'Smartphone', title: 'Mobile Trading', desc: 'Manage your portfolio on-the-go with our intuitive mobile app. Trade anytime, anywhere.' },
+  { icon: 'Gem', title: 'Diversified Assets', desc: 'Access stocks, bonds, ETFs, crypto, and alternative investments all in one platform.' },
+  { icon: 'Users', title: 'Expert Advisors', desc: 'Get personalized guidance from certified financial advisors with decades of experience.' }
 ];
 
 const stats = [
@@ -29,8 +28,16 @@ const plans = [
 export default function InvestmentSite() {
   const [nav, setNav] = useState('home');
 
+  useEffect(() => {
+    // Initialize lucide icons after component mounts
+    if (typeof window !== 'undefined' && (window as any).lucide) {
+      (window as any).lucide.createIcons();
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-dark text-light">
+      <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
       <style jsx global>{`
         :root {
           --dark: #1a1a1a;
@@ -122,7 +129,9 @@ export default function InvestmentSite() {
         <div className="grid">
           {features.map((f, i) => (
             <div key={i} className="card">
-              <div className="icon">{createElement(f.icon as any, { size: 48, strokeWidth: 1.5 })}</div>
+              <div className="icon">
+                <i data-lucide={f.icon} data-lucide-size="48" data-lucide-stroke-width="1.5"></i>
+              </div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
             </div>
