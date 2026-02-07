@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, Lock, Target, Smartphone, Gem, Users } from 'lucide';
+import { TrendingUp, Lock, Target, Smartphone, Gem, Users, LucideIcon } from 'lucide';
 
-const features = [
+const features: { icon: LucideIcon; title: string; desc: string }[] = [
   { icon: TrendingUp, title: 'AI-Powered Analytics', desc: 'Leverage cutting-edge artificial intelligence to analyze market trends and optimize your portfolio in real-time.' },
   { icon: Lock, title: 'Bank-Level Security', desc: 'Your investments are protected with military-grade encryption and multi-factor authentication protocols.' },
   { icon: Target, title: 'Personalized Strategy', desc: 'Custom investment plans tailored to your risk tolerance, financial goals, and timeline.' },
