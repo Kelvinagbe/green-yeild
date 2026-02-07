@@ -83,12 +83,13 @@ export default function InvestmentPlans() {
     setShowInvestModal(true);
   };
 
-  const calculateReturns = () => {
-    if (!investAmount || !selectedPlan) return 0;
+  const calculateReturns = (): string => {
+    if (!investAmount || !selectedPlan) return '0';
     const plan = plans.find(p => p.id === selectedPlan);
+    if (!plan) return '0';
     const amount = parseFloat(investAmount);
     const months = parseInt(duration);
-    return (amount * (plan!.returnRate / 100) * (months / 12)).toFixed(2);
+    return (amount * (plan.returnRate / 100) * (months / 12)).toFixed(2);
   };
 
   return (
