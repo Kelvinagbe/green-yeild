@@ -96,34 +96,14 @@ export default function InvestmentSite() {
           
           {/* Hero Image */}
           <div className="relative">
-            <div className="relative rounded-3xl overflow-hidden border border-gray-800 bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] p-8">
-              {/* Chart Illustration */}
-              <div className="space-y-4">
-                {/* Growth Chart */}
-                <div className="flex items-end justify-between h-48 gap-2">
-                  <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg" style={{height: '45%'}}></div>
-                  <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg" style={{height: '60%'}}></div>
-                  <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg" style={{height: '75%'}}></div>
-                  <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg" style={{height: '85%'}}></div>
-                  <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-lg" style={{height: '100%'}}></div>
-                </div>
-                
-                {/* Stats Cards */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#0f0f0f] border border-gray-800 rounded-xl p-4">
-                    <div className="text-green-400 text-2xl font-bold">+24.5%</div>
-                    <div className="text-gray-400 text-sm">Portfolio Growth</div>
-                  </div>
-                  <div className="bg-[#0f0f0f] border border-gray-800 rounded-xl p-4">
-                    <div className="text-green-400 text-2xl font-bold">$125K</div>
-                    <div className="text-gray-400 text-sm">Total Returns</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Floating Elements */}
-              <div className="absolute -top-4 -right-4 w-20 h-20 bg-green-500/20 rounded-full blur-xl"></div>
-              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-green-500/10 rounded-full blur-2xl"></div>
+            <img 
+              src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&q=80" 
+              alt="Investment analytics and charts"
+              className="rounded-3xl border border-gray-800 shadow-2xl shadow-green-500/10"
+            />
+            <div className="absolute -bottom-6 -left-6 bg-[#0f0f0f] border border-green-500 rounded-2xl p-6 shadow-xl">
+              <div className="text-green-400 text-3xl font-bold">+24.5%</div>
+              <div className="text-gray-400 text-sm">Annual Growth</div>
             </div>
           </div>
         </div>
@@ -141,6 +121,84 @@ export default function InvestmentSite() {
               <div className="text-gray-400 text-lg">{s.label}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Investment Showcase */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
+            <div className="relative">
+              <img 
+                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80" 
+                alt="Portfolio dashboard and analytics"
+                className="rounded-3xl border border-gray-800 shadow-2xl"
+              />
+              <div className="absolute -bottom-4 -right-4 bg-[#0f0f0f] border border-green-500 rounded-2xl p-4 shadow-xl">
+                <div className="text-green-400 text-2xl font-bold">$487K</div>
+                <div className="text-gray-400 text-xs">Portfolio Value</div>
+              </div>
+            </div>
+            
+            <div>
+              <h2 className="text-4xl font-bold text-white mb-4">
+                Smart Portfolio Management
+              </h2>
+              <p className="text-gray-400 text-lg mb-6">
+                Our AI-powered platform automatically balances your portfolio based on market conditions, risk tolerance, and your financial goals. Watch your wealth grow with intelligent diversification.
+              </p>
+              <ul className="space-y-3">
+                <li className="flex items-start text-gray-300">
+                  <span className="text-green-400 font-bold text-lg mr-3">✓</span>
+                  Real-time portfolio rebalancing
+                </li>
+                <li className="flex items-start text-gray-300">
+                  <span className="text-green-400 font-bold text-lg mr-3">✓</span>
+                  Tax-loss harvesting strategies
+                </li>
+                <li className="flex items-start text-gray-300">
+                  <span className="text-green-400 font-bold text-lg mr-3">✓</span>
+                  Automated dividend reinvestment
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Market Data Visualization */}
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="order-2 md:order-1">
+              <h2 className="text-4xl font-bold text-white mb-4">
+                Real-Time Market Insights
+              </h2>
+              <p className="text-gray-400 text-lg mb-6">
+                Stay ahead of the market with live data, advanced analytics, and AI-driven predictions. Make informed decisions backed by comprehensive research and analysis.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#0f0f0f] border border-gray-800 rounded-xl p-4">
+                  <div className="text-gray-400 text-sm mb-1">S&P 500</div>
+                  <div className="text-white text-xl font-bold">4,783.45</div>
+                  <div className="text-green-400 text-sm">+1.2%</div>
+                </div>
+                <div className="bg-[#0f0f0f] border border-gray-800 rounded-xl p-4">
+                  <div className="text-gray-400 text-sm mb-1">NASDAQ</div>
+                  <div className="text-white text-xl font-bold">15,235.89</div>
+                  <div className="text-green-400 text-sm">+2.1%</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="relative order-1 md:order-2">
+              <img 
+                src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&q=80" 
+                alt="Stock market data and trading charts"
+                className="rounded-3xl border border-gray-800 shadow-2xl"
+              />
+              <div className="absolute top-6 right-6 bg-[#0f0f0f]/90 backdrop-blur border border-green-500 rounded-xl p-4 shadow-xl">
+                <div className="text-gray-400 text-xs mb-1">Live Market</div>
+                <div className="text-green-400 text-xl font-bold">+2.1%</div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
