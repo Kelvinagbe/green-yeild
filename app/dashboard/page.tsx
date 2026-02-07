@@ -1,28 +1,176 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('1M');
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [checkedDays, setCheckedDays] = useState([1, 2, 3]);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
-  }, [activeTab]);
+  }, []);
+
+  const handleCheckIn = () => {
+    setIsChecking(true);
+    setTimeout(() => {
+      setCheckedDays([...checkedDays, checkedDays.length + 1]);
+      setIsChecking(false);
+      setTimeout(() => setShowCheckIn(false), 1500);
+    }, 800);
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
+      {/* Check-in Modal */}
+      {showCheckIn && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => !isChecking && setShowCheckIn(false)}
+        >
+          <div 
+            className="bg-[#161616] border border-neutral-800 rounded-2xl p-6 max-w-md w-full transform transition-all duration-300 ease-out scale-100"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            <style jsx>{`
+              @keyframes slideUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(20px) scale(0.95);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0) scale(1);
+                }
+              }
+              @keyframes checkmark {
+                0% {
+                  transform: scale(0) rotate(-45deg);
+                }
+                50% {
+                  transform: scale(1.2) rotate(-45deg);
+                }
+                100% {
+                  transform: scale(1) rotate(-45deg);
+                }
+              }
+              @keyframes pulse {
+                0%, 100% {
+                  transform: scale(1);
+                }
+                50% {
+                  transform: scale(1.05);
+                }
+              }
+            `}</style>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="calendar-check" className="w-8 h-8 text-green-500"></i>
+              </div>
+              <h2 className="text-2xl font-semibold mb-2">Daily Check-in</h2>
+              <p className="text-neutral-400 text-sm">Keep your streak going!</p>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2 mb-6">
+              {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+                const isChecked = checkedDays.includes(day);
+                const isCheckingNow = isChecking && day === checkedDays.length + 1;
+                
+                return (
+                  <div
+                    key={day}
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${
+                      isChecked
+                        ? 'bg-green-500 text-white'
+                        : 'bg-neutral-800 text-neutral-400'
+                    }`}
+                    style={isCheckingNow ? { animation: 'pulse 0.8s ease-in-out' } : {}}
+                  >
+                    <div className="text-xs mb-1 opacity-60">Day</div>
+                    <div className="text-lg font-semibold">{day}</div>
+                    {isChecked && (
+                      <div 
+                        className="absolute"
+                        style={
+                          day === checkedDays[checkedDays.length - 1] && !isChecking
+                            ? { animation: 'checkmark 0.4s ease-out' }
+                            : {}
+                        }
+                      >
+                        <i data-lucide="check" className="w-4 h-4"></i>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Streak Info */}
+            <div className="bg-neutral-900 rounded-xl p-4 mb-6 flex items-center justify-between">
+              <div>
+                <div className="text-sm text-neutral-400">Current Streak</div>
+                <div className="text-2xl font-semibold text-green-500">{checkedDays.length} days</div>
+              </div>
+              <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center">
+                <i data-lucide="flame" className="w-6 h-6 text-green-500"></i>
+              </div>
+            </div>
+
+            {/* Check-in Button */}
+            {checkedDays.length < 7 && (
+              <button
+                onClick={handleCheckIn}
+                disabled={isChecking}
+                className={`w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                  isChecking ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isChecking ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Checking in...
+                  </>
+                ) : (
+                  <>
+                    <i data-lucide="check-circle" className="w-5 h-5"></i>
+                    Check In • Day {checkedDays.length + 1}
+                  </>
+                )}
+              </button>
+            )}
+
+            {checkedDays.length === 7 && (
+              <div className="text-center">
+                <div className="text-green-500 font-medium mb-2">🎉 Week Complete!</div>
+                <button
+                  onClick={() => setShowCheckIn(false)}
+                  className="w-full h-12 bg-neutral-800 hover:bg-neutral-700 rounded-xl font-medium transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header - Minimal */}
-      <header className="border-b border-neutral-900 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-neutral-800 bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="text-lg font-semibold">Green Yield</div>
             
             <div className="flex items-center gap-4">
-              <button className="w-9 h-9 rounded-full bg-neutral-900 hover:bg-neutral-800 transition-all flex items-center justify-center">
+              <button className="w-9 h-9 rounded-full bg-[#1a1a1a] hover:bg-[#222222] transition-all flex items-center justify-center">
                 <i data-lucide="bell" className="w-4 h-4"></i>
               </button>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-sm font-medium">
@@ -45,7 +193,7 @@ export default function Dashboard() {
         {/* Balance Card - Thick Green Border */}
         <div className="relative group">
           <div className="absolute -inset-[2px] bg-gradient-to-br from-green-500 to-green-600 rounded-2xl sm:rounded-3xl opacity-100"></div>
-          <div className="relative bg-black rounded-2xl sm:rounded-3xl p-6 sm:p-8 space-y-6">
+          <div className="relative bg-[#0a0a0a] rounded-2xl sm:rounded-3xl p-6 sm:p-8 space-y-6">
             
             {/* Balance */}
             <div className="space-y-2">
@@ -68,7 +216,7 @@ export default function Dashboard() {
                 <i data-lucide="arrow-down-left" className="w-4 h-4"></i>
                 Deposit
               </button>
-              <button className="h-12 bg-neutral-900 hover:bg-neutral-800 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
+              <button className="h-12 bg-[#1a1a1a] hover:bg-[#222222] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
                 <i data-lucide="arrow-up-right" className="w-4 h-4"></i>
                 Withdraw
               </button>
@@ -77,13 +225,13 @@ export default function Dashboard() {
         </div>
 
         {/* Invest Button */}
-        <button className="w-full h-14 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+        <button className="w-full h-14 bg-[#161616] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-neutral-700 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
           <i data-lucide="trending-up" className="w-5 h-5"></i>
           Start Investing
         </button>
 
         {/* Daily Check-in */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-medium mb-1">Daily Check-in</h3>
@@ -101,19 +249,22 @@ export default function Dashboard() {
                 className={`flex-1 h-2 rounded-full transition-all ${
                   day <= 3
                     ? 'bg-green-500'
-                    : 'bg-neutral-800'
+                    : 'bg-[#1a1a1a]'
                 }`}
               ></div>
             ))}
           </div>
           
-          <button className="w-full h-11 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-all active:scale-95">
+          <button 
+            onClick={() => setShowCheckIn(true)}
+            className="w-full h-11 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-all active:scale-95"
+          >
             Check In • Day 3
           </button>
         </div>
 
         {/* Transaction History */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-neutral-800">
             <h3 className="font-medium">Recent Transactions</h3>
           </div>
@@ -158,9 +309,9 @@ export default function Dashboard() {
             ].map((transaction, index) => (
               <div
                 key={index}
-                className="p-4 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-neutral-800/50 transition-colors"
+                className="p-4 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-[#1a1a1a] transition-colors"
               >
-                <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center flex-shrink-0">
                   <i data-lucide={transaction.icon} className="w-4 h-4"></i>
                 </div>
                 
@@ -188,88 +339,9 @@ export default function Dashboard() {
             ))}
           </div>
           
-          <button className="w-full p-4 text-sm text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors">
+          <button className="w-full p-4 text-sm text-neutral-400 hover:text-white hover:bg-[#1a1a1a] transition-colors">
             View All Transactions
           </button>
-        </div>
-
-        {/* Performance Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Performance</h3>
-            <div className="flex gap-1 bg-neutral-800 rounded-lg p-1">
-              {['1W', '1M', '3M', '1Y'].map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setActiveTab(period)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-                    activeTab === period
-                      ? 'bg-neutral-700 text-white'
-                      : 'text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Chart */}
-          <div className="relative h-48 sm:h-64">
-            <svg viewBox="0 0 800 200" className="w-full h-full">
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#22c55e', stopOpacity: 0.2 }} />
-                  <stop offset="100%" style={{ stopColor: '#22c55e', stopOpacity: 0 }} />
-                </linearGradient>
-              </defs>
-              
-              {/* Grid lines */}
-              {[0, 50, 100, 150, 200].map((y) => (
-                <line
-                  key={y}
-                  x1="0"
-                  y1={y}
-                  x2="800"
-                  y2={y}
-                  stroke="#262626"
-                  strokeWidth="1"
-                />
-              ))}
-              
-              {/* Area under curve */}
-              <path
-                d="M 0 180 L 100 160 L 200 140 L 300 150 L 400 110 L 500 80 L 600 90 L 700 50 L 800 60 L 800 200 L 0 200 Z"
-                fill="url(#gradient)"
-              />
-              
-              {/* Line */}
-              <path
-                d="M 0 180 L 100 160 L 200 140 L 300 150 L 400 110 L 500 80 L 600 90 L 700 50 L 800 60"
-                fill="none"
-                stroke="#22c55e"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-neutral-800">
-            <div>
-              <div className="text-xs text-neutral-400 mb-1">Invested</div>
-              <div className="font-medium">$361,910</div>
-            </div>
-            <div>
-              <div className="text-xs text-neutral-400 mb-1">Returns</div>
-              <div className="font-medium text-green-500">+$54,320</div>
-            </div>
-            <div>
-              <div className="text-xs text-neutral-400 mb-1">Growth</div>
-              <div className="font-medium text-green-500">+15.3%</div>
-            </div>
-          </div>
         </div>
 
         {/* Bottom Spacing */}
