@@ -17,6 +17,7 @@ export default function Sidebar({ showSidebar, setShowSidebar }: SidebarProps) {
 
   const sidebarItems = [
     { icon: 'user', label: 'Profile', href: '/profile' },
+{ icon: 'house', label: 'Dashboard', href: '/dashboard' },
     { icon: 'credit-card', label: 'Plans', href: '/plans' },
     { icon: 'arrow-up-right', label: 'Withdraw', href: '/withdraw' },
   ];
