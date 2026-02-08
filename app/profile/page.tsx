@@ -9,12 +9,18 @@ export default function Profile() {
   const [notifications, setNotifications] = useState({ email: true, push: true, sms: false, marketing: true });
   const [twoFactor, setTwoFactor] = useState(false);
   const [biometric, setBiometric] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
   }, [activeTab, showEditProfile, showChangePassword, notifications, twoFactor, biometric]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const userProfile = {
     name: 'John Doe',
@@ -27,6 +33,59 @@ export default function Profile() {
     activeInvestments: 3,
     totalReturns: 54320
   };
+
+  // Skeleton Components
+  const ProfileHeaderSkeleton = () => (
+    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 animate-pulse">
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        <div className="w-20 h-20 rounded-full bg-neutral-700"></div>
+        <div className="flex-1 text-center sm:text-left space-y-3">
+          <div className="h-7 w-40 bg-neutral-700 rounded mx-auto sm:mx-0"></div>
+          <div className="h-4 w-48 bg-neutral-700 rounded mx-auto sm:mx-0"></div>
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <div className="h-6 w-20 bg-neutral-700 rounded-full"></div>
+            <div className="h-6 w-28 bg-neutral-700 rounded-full"></div>
+          </div>
+        </div>
+        <div className="h-10 w-32 bg-neutral-700 rounded-lg"></div>
+      </div>
+    </div>
+  );
+
+  const StatsSkeleton = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-[#262626] border border-neutral-700 rounded-xl p-4 animate-pulse">
+          <div className="h-4 w-24 bg-neutral-700 rounded mb-2"></div>
+          <div className="h-7 w-32 bg-neutral-700 rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const TabContentSkeleton = () => (
+    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden animate-pulse">
+      <div className="flex border-b border-neutral-700">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex-1 px-4 py-3 h-12 bg-neutral-700/30"></div>
+        ))}
+      </div>
+      <div className="p-6 space-y-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-center justify-between py-3 border-b border-neutral-700">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-5 h-5 bg-neutral-700 rounded"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 w-32 bg-neutral-700 rounded"></div>
+                <div className="h-3 w-48 bg-neutral-700 rounded"></div>
+              </div>
+            </div>
+            <div className="h-6 w-12 bg-neutral-700 rounded-full"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   // Reusable Components
   const Modal = ({ isOpen, onClose, title, children }: any) => {
@@ -111,178 +170,171 @@ export default function Profile() {
         </div>
       </Modal>
 
-      {/* Header */}
-      <header className="border-b border-neutral-700 bg-[#1c1c1c]/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <button className="w-9 h-9 rounded-full bg-[#2a2a2a] hover:bg-[#333333] transition-all flex items-center justify-center">
-                <i data-lucide="arrow-left" className="w-4 h-4"></i>
-              </button>
-              <div className="text-lg font-semibold">Profile & Settings</div>
-            </div>
-            <button className="w-9 h-9 rounded-full bg-[#2a2a2a] hover:bg-[#333333] transition-all flex items-center justify-center">
-              <i data-lucide="bell" className="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        
-        {/* Profile Header Card */}
-        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-2xl font-bold">JD</div>
-            <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-2xl font-semibold mb-1">{userProfile.name}</h2>
-              <p className="text-neutral-400 mb-2">{userProfile.email}</p>
-              <div className="flex items-center justify-center sm:justify-start gap-2">
-                <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-xs font-medium flex items-center gap-1">
-                  <i data-lucide="check-circle" className="w-3 h-3"></i>
-                  {userProfile.verificationStatus}
-                </span>
-                <span className="px-3 py-1 bg-[#2a2a2a] text-neutral-300 rounded-full text-xs font-medium">{userProfile.accountType}</span>
+
+        {loading ? (
+          <>
+            <ProfileHeaderSkeleton />
+            <StatsSkeleton />
+            <TabContentSkeleton />
+          </>
+        ) : (
+          <>
+            {/* Profile Header Card */}
+            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-2xl font-bold">JD</div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h2 className="text-2xl font-semibold mb-1">{userProfile.name}</h2>
+                  <p className="text-neutral-400 mb-2">{userProfile.email}</p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-xs font-medium flex items-center gap-1">
+                      <i data-lucide="check-circle" className="w-3 h-3"></i>
+                      {userProfile.verificationStatus}
+                    </span>
+                    <span className="px-3 py-1 bg-[#2a2a2a] text-neutral-300 rounded-full text-xs font-medium">{userProfile.accountType}</span>
+                  </div>
+                </div>
+                <button onClick={() => setShowEditProfile(true)} className="px-6 py-2.5 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-all active:scale-95 flex items-center gap-2">
+                  <i data-lucide="edit-2" className="w-4 h-4"></i>
+                  Edit Profile
+                </button>
               </div>
             </div>
-            <button onClick={() => setShowEditProfile(true)} className="px-6 py-2.5 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-all active:scale-95 flex items-center gap-2">
-              <i data-lucide="edit-2" className="w-4 h-4"></i>
-              Edit Profile
-            </button>
-          </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { label: 'Total Invested', value: `₦${userProfile.totalInvested.toLocaleString()}` },
-            { label: 'Active Plans', value: userProfile.activeInvestments },
-            { label: 'Total Returns', value: `+₦${userProfile.totalReturns.toLocaleString()}`, color: 'text-green-500' }
-          ].map((stat, i) => (
-            <div key={i} className="bg-[#262626] border border-neutral-700 rounded-xl p-4">
-              <div className="text-sm text-neutral-400 mb-1">{stat.label}</div>
-              <div className={`text-2xl font-semibold ${stat.color || ''}`}>{stat.value}</div>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Total Invested', value: `₦${userProfile.totalInvested.toLocaleString()}` },
+                { label: 'Active Plans', value: userProfile.activeInvestments },
+                { label: 'Total Returns', value: `+₦${userProfile.totalReturns.toLocaleString()}`, color: 'text-green-500' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-[#262626] border border-neutral-700 rounded-xl p-4">
+                  <div className="text-sm text-neutral-400 mb-1">{stat.label}</div>
+                  <div className={`text-2xl font-semibold ${stat.color || ''}`}>{stat.value}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Tabs */}
-        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden">
-          <div className="flex border-b border-neutral-700">
-            {['profile', 'security', 'preferences'].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 px-4 py-3 font-medium transition-all capitalize ${activeTab === tab ? 'bg-green-500/10 text-green-500 border-b-2 border-green-500' : 'text-neutral-400 hover:text-white'}`}>
-                {tab === 'profile' ? 'Account' : tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-6 space-y-4">
-            {/* Account Tab */}
-            {activeTab === 'profile' && (
-              <>
-                <SettingRow icon="user" title="Full Name" subtitle={userProfile.name} />
-                <SettingRow icon="mail" title="Email Address" subtitle={userProfile.email} action={<span className="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded-full">Verified</span>} />
-                <SettingRow icon="phone" title="Phone Number" subtitle={userProfile.phone} action={<span className="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded-full">Verified</span>} />
-                <SettingRow icon="calendar" title="Member Since" subtitle={userProfile.dateJoined} />
-              </>
-            )}
-
-            {/* Security Tab */}
-            {activeTab === 'security' && (
-              <>
-                <button onClick={() => setShowChangePassword(true)} className="w-full flex items-center justify-between py-3 border-b border-neutral-700 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
-                  <div className="flex items-center gap-3">
-                    <i data-lucide="lock" className="w-5 h-5 text-neutral-400"></i>
-                    <div className="text-left">
-                      <div className="font-medium">Change Password</div>
-                      <div className="text-sm text-neutral-400">Update your account password</div>
-                    </div>
-                  </div>
-                  <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
-                </button>
-                <SettingRow icon="shield" title="Two-Factor Authentication" subtitle="Add an extra layer of security" action={<Toggle value={twoFactor} onChange={() => setTwoFactor(!twoFactor)} />} />
-                <SettingRow icon="fingerprint" title="Biometric Login" subtitle="Use fingerprint or face ID" action={<Toggle value={biometric} onChange={() => setBiometric(!biometric)} />} />
-                <button className="w-full flex items-center justify-between py-3 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
-                  <div className="flex items-center gap-3">
-                    <i data-lucide="smartphone" className="w-5 h-5 text-neutral-400"></i>
-                    <div className="text-left">
-                      <div className="font-medium">Active Sessions</div>
-                      <div className="text-sm text-neutral-400">Manage your logged-in devices</div>
-                    </div>
-                  </div>
-                  <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
-                </button>
-              </>
-            )}
-
-            {/* Preferences Tab */}
-            {activeTab === 'preferences' && (
-              <>
-                <h4 className="font-medium mb-3">Notifications</h4>
-                {[
-                  { key: 'email', icon: 'mail', title: 'Email Notifications', subtitle: 'Receive updates via email' },
-                  { key: 'push', icon: 'bell', title: 'Push Notifications', subtitle: 'Get alerts on your device' },
-                  { key: 'sms', icon: 'message-square', title: 'SMS Notifications', subtitle: 'Receive text messages' },
-                  { key: 'marketing', icon: 'megaphone', title: 'Marketing Updates', subtitle: 'News and promotional offers' }
-                ].map((notif) => (
-                  <SettingRow key={notif.key} icon={notif.icon} title={notif.title} subtitle={notif.subtitle} action={<Toggle value={notifications[notif.key as keyof typeof notifications]} onChange={() => setNotifications({...notifications, [notif.key]: !notifications[notif.key as keyof typeof notifications]})} />} />
+            {/* Tabs */}
+            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden">
+              <div className="flex border-b border-neutral-700">
+                {['profile', 'security', 'preferences'].map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 px-4 py-3 font-medium transition-all capitalize ${activeTab === tab ? 'bg-green-500/10 text-green-500 border-b-2 border-green-500' : 'text-neutral-400 hover:text-white'}`}>
+                    {tab === 'profile' ? 'Account' : tab}
+                  </button>
                 ))}
-                <h4 className="font-medium mb-3 pt-4">Other Settings</h4>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Account Tab */}
+                {activeTab === 'profile' && (
+                  <>
+                    <SettingRow icon="user" title="Full Name" subtitle={userProfile.name} />
+                    <SettingRow icon="mail" title="Email Address" subtitle={userProfile.email} action={<span className="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded-full">Verified</span>} />
+                    <SettingRow icon="phone" title="Phone Number" subtitle={userProfile.phone} action={<span className="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded-full">Verified</span>} />
+                    <SettingRow icon="calendar" title="Member Since" subtitle={userProfile.dateJoined} />
+                  </>
+                )}
+
+                {/* Security Tab */}
+                {activeTab === 'security' && (
+                  <>
+                    <button onClick={() => setShowChangePassword(true)} className="w-full flex items-center justify-between py-3 border-b border-neutral-700 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
+                      <div className="flex items-center gap-3">
+                        <i data-lucide="lock" className="w-5 h-5 text-neutral-400"></i>
+                        <div className="text-left">
+                          <div className="font-medium">Change Password</div>
+                          <div className="text-sm text-neutral-400">Update your account password</div>
+                        </div>
+                      </div>
+                      <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
+                    </button>
+                    <SettingRow icon="shield" title="Two-Factor Authentication" subtitle="Add an extra layer of security" action={<Toggle value={twoFactor} onChange={() => setTwoFactor(!twoFactor)} />} />
+                    <SettingRow icon="fingerprint" title="Biometric Login" subtitle="Use fingerprint or face ID" action={<Toggle value={biometric} onChange={() => setBiometric(!biometric)} />} />
+                    <button className="w-full flex items-center justify-between py-3 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
+                      <div className="flex items-center gap-3">
+                        <i data-lucide="smartphone" className="w-5 h-5 text-neutral-400"></i>
+                        <div className="text-left">
+                          <div className="font-medium">Active Sessions</div>
+                          <div className="text-sm text-neutral-400">Manage your logged-in devices</div>
+                        </div>
+                      </div>
+                      <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
+                    </button>
+                  </>
+                )}
+
+                {/* Preferences Tab */}
+                {activeTab === 'preferences' && (
+                  <>
+                    <h4 className="font-medium mb-3">Notifications</h4>
+                    {[
+                      { key: 'email', icon: 'mail', title: 'Email Notifications', subtitle: 'Receive updates via email' },
+                      { key: 'push', icon: 'bell', title: 'Push Notifications', subtitle: 'Get alerts on your device' },
+                      { key: 'sms', icon: 'message-square', title: 'SMS Notifications', subtitle: 'Receive text messages' },
+                      { key: 'marketing', icon: 'megaphone', title: 'Marketing Updates', subtitle: 'News and promotional offers' }
+                    ].map((notif) => (
+                      <SettingRow key={notif.key} icon={notif.icon} title={notif.title} subtitle={notif.subtitle} action={<Toggle value={notifications[notif.key as keyof typeof notifications]} onChange={() => setNotifications({...notifications, [notif.key]: !notifications[notif.key as keyof typeof notifications]})} />} />
+                    ))}
+                    <h4 className="font-medium mb-3 pt-4">Other Settings</h4>
+                    {[
+                      { icon: 'globe', title: 'Language', subtitle: 'English (US)' },
+                      { icon: 'palette', title: 'Theme', subtitle: 'Dark Mode' }
+                    ].map((setting, i) => (
+                      <button key={i} className="w-full flex items-center justify-between py-3 border-b border-neutral-700 last:border-0 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
+                        <div className="flex items-center gap-3">
+                          <i data-lucide={setting.icon} className="w-5 h-5 text-neutral-400"></i>
+                          <div className="text-left">
+                            <div className="font-medium">{setting.title}</div>
+                            <div className="text-sm text-neutral-400">{setting.subtitle}</div>
+                          </div>
+                        </div>
+                        <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="bg-[#262626] border border-red-500/20 rounded-xl sm:rounded-2xl p-6">
+              <h3 className="font-medium text-red-500 mb-4">Danger Zone</h3>
+              <div className="space-y-3">
                 {[
-                  { icon: 'globe', title: 'Language', subtitle: 'English (US)' },
-                  { icon: 'palette', title: 'Theme', subtitle: 'Dark Mode' }
-                ].map((setting, i) => (
-                  <button key={i} className="w-full flex items-center justify-between py-3 border-b border-neutral-700 last:border-0 hover:bg-[#2a2a2a] px-3 -mx-3 rounded-lg transition-all">
+                  { icon: 'log-out', title: 'Logout', subtitle: 'Sign out of your account' },
+                  { icon: 'trash-2', title: 'Delete Account', subtitle: 'Permanently delete your account' }
+                ].map((action, i) => (
+                  <button key={i} className="w-full flex items-center justify-between py-3 hover:bg-red-500/5 px-3 -mx-3 rounded-lg transition-all">
                     <div className="flex items-center gap-3">
-                      <i data-lucide={setting.icon} className="w-5 h-5 text-neutral-400"></i>
+                      <i data-lucide={action.icon} className="w-5 h-5 text-red-500"></i>
                       <div className="text-left">
-                        <div className="font-medium">{setting.title}</div>
-                        <div className="text-sm text-neutral-400">{setting.subtitle}</div>
+                        <div className="font-medium">{action.title}</div>
+                        <div className="text-sm text-neutral-400">{action.subtitle}</div>
                       </div>
                     </div>
                     <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
                   </button>
                 ))}
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Danger Zone */}
-        <div className="bg-[#262626] border border-red-500/20 rounded-xl sm:rounded-2xl p-6">
-          <h3 className="font-medium text-red-500 mb-4">Danger Zone</h3>
-          <div className="space-y-3">
-            {[
-              { icon: 'log-out', title: 'Logout', subtitle: 'Sign out of your account' },
-              { icon: 'trash-2', title: 'Delete Account', subtitle: 'Permanently delete your account' }
-            ].map((action, i) => (
-              <button key={i} className="w-full flex items-center justify-between py-3 hover:bg-red-500/5 px-3 -mx-3 rounded-lg transition-all">
-                <div className="flex items-center gap-3">
-                  <i data-lucide={action.icon} className="w-5 h-5 text-red-500"></i>
-                  <div className="text-left">
-                    <div className="font-medium">{action.title}</div>
-                    <div className="text-sm text-neutral-400">{action.subtitle}</div>
-                  </div>
-                </div>
-                <i data-lucide="chevron-right" className="w-5 h-5 text-neutral-400"></i>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* App Info */}
-        <div className="text-center text-sm text-neutral-500 space-y-1">
-          <div>Green Yield v2.1.0</div>
-          <div className="flex items-center justify-center gap-4">
-            {['Privacy Policy', 'Terms of Service', 'Support'].map((link, i, arr) => (
-              <span key={link}>
-                <button className="hover:text-green-500 transition-all">{link}</button>
-                {i < arr.length - 1 && <span className="mx-4">•</span>}
-              </span>
-            ))}
-          </div>
-        </div>
+            {/* App Info */}
+            <div className="text-center text-sm text-neutral-500 space-y-1">
+              <div>Green Yield v2.1.0</div>
+              <div className="flex items-center justify-center gap-4">
+                {['Privacy Policy', 'Terms of Service', 'Support'].map((link, i, arr) => (
+                  <span key={link}>
+                    <button className="hover:text-green-500 transition-all">{link}</button>
+                    {i < arr.length - 1 && <span className="mx-4">•</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="h-8"></div>
       </main>
