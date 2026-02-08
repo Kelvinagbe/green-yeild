@@ -3,7 +3,7 @@ use client';
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { useState } from 'react';
-import Sidebar from '@/green-yeild/Sidebar';
+import Sidebar from '@/green-yeild/Slidebar';
 
 const inter = Inter({ subsets: ['latin'] });
 
