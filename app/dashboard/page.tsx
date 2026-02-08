@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkedDays, setCheckedDays] = useState([1, 2, 3]);
   const [isChecking, setIsChecking] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
-  }, [showCheckIn, showSidebar]);
+  }, [showCheckIn]);
 
   const handleCheckIn = () => {
     setIsChecking(true);
@@ -32,24 +32,13 @@ export default function Dashboard() {
   ];
 
   const quickActions = [
-    { icon: 'user', title: 'Profile', subtitle: 'Manage account' },
-    { icon: 'credit-card', title: 'Plans', subtitle: 'View subscriptions' },
-    { icon: 'arrow-up-right', title: 'Withdraw', subtitle: 'Cash out funds' },
-  ];
-
-  const sidebarItems = [
-    { icon: 'layout-dashboard', label: 'Dashboard', active: true },
-    { icon: 'trending-up', label: 'Investments' },
-    { icon: 'wallet', label: 'Wallet' },
-    { icon: 'history', label: 'Transactions' },
-    { icon: 'gift', label: 'Rewards' },
-    { icon: 'settings', label: 'Settings' },
+    { icon: 'user', title: 'Profile', subtitle: 'Manage account', href: '/profile' },
+    { icon: 'credit-card', title: 'Plans', subtitle: 'View subscriptions', href: '/plans' },
+    { icon: 'arrow-up-right', title: 'Withdraw', subtitle: 'Cash out funds', href: '/withdraw' },
   ];
 
   return (
     <div className="min-h-screen bg-[#1c1c1c] text-white">
-      <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-
       <style jsx>{`
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(20px) scale(0.95); }
@@ -64,56 +53,7 @@ export default function Dashboard() {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
         }
-        @keyframes slideIn {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(0); }
-        }
       `}</style>
-
-      {/* Sidebar */}
-      {showSidebar && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowSidebar(false)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-          <div 
-            className="absolute left-0 top-0 bottom-0 w-72 bg-[#262626] border-r border-neutral-700"
-            style={{ animation: 'slideIn 0.3s ease-out' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-neutral-700 flex items-center justify-between">
-              <div className="text-lg font-semibold">Green Yield</div>
-              <button onClick={() => setShowSidebar(false)} className="w-8 h-8 rounded-full bg-[#2a2a2a] hover:bg-[#333333] flex items-center justify-center">
-                <i data-lucide="x" className="w-4 h-4"></i>
-              </button>
-            </div>
-
-            <div className="p-6 border-b border-neutral-700">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center font-medium">JD</div>
-                <div>
-                  <div className="font-medium">John Doe</div>
-                  <div className="text-sm text-neutral-400">Premium Member</div>
-                </div>
-              </div>
-            </div>
-
-            <nav className="p-4 space-y-1">
-              {sidebarItems.map((item, i) => (
-                <button key={i} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${item.active ? 'bg-green-500 text-white' : 'hover:bg-[#2a2a2a] text-neutral-300'}`}>
-                  <i data-lucide={item.icon} className="w-5 h-5"></i>
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              ))}
-            </nav>
-
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-neutral-700">
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-500 transition-all">
-                <i data-lucide="log-out" className="w-5 h-5"></i>
-                <span className="font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Check-in Modal */}
       {showCheckIn && (
@@ -165,27 +105,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="border-b border-neutral-700 bg-[#1c1c1c]/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setShowSidebar(true)} className="w-9 h-9 rounded-full bg-[#2a2a2a] hover:bg-[#333333] transition-all flex items-center justify-center">
-                <i data-lucide="menu" className="w-4 h-4"></i>
-              </button>
-              <div className="text-lg font-semibold">Green Yield</div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button className="w-9 h-9 rounded-full bg-[#2a2a2a] hover:bg-[#333333] transition-all flex items-center justify-center">
-                <i data-lucide="bell" className="w-4 h-4"></i>
-              </button>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-sm font-medium">JD</div>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <div className="space-y-1">
@@ -223,13 +142,17 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-3">
           {quickActions.map((action, i) => (
-            <button key={i} className="bg-[#262626] border border-neutral-700 hover:border-neutral-600 hover:bg-[#2a2a2a] rounded-xl p-4 transition-all active:scale-95">
+            <Link 
+              key={i} 
+              href={action.href}
+              className="bg-[#262626] border border-neutral-700 hover:border-neutral-600 hover:bg-[#2a2a2a] rounded-xl p-4 transition-all active:scale-95"
+            >
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3 mx-auto">
                 <i data-lucide={action.icon} className="w-5 h-5 text-green-500"></i>
               </div>
               <div className="text-sm font-medium mb-1">{action.title}</div>
               <div className="text-xs text-neutral-400">{action.subtitle}</div>
-            </button>
+            </Link>
           ))}
         </div>
 
