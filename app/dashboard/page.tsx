@@ -7,12 +7,15 @@ export default function Dashboard() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkedDays, setCheckedDays] = useState([1, 2, 3]);
   const [isChecking, setIsChecking] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [openingGateway, setOpeningGateway] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
-  }, [showCheckIn]);
+  }, [showCheckIn, showDepositModal]);
 
   const handleCheckIn = () => {
     setIsChecking(true);
@@ -22,6 +25,18 @@ export default function Dashboard() {
       setTimeout(() => setShowCheckIn(false), 1500);
     }, 800);
   };
+
+  const handleDeposit = () => {
+    setOpeningGateway(true);
+    setTimeout(() => {
+      setOpeningGateway(false);
+      setShowDepositModal(false);
+      setDepositAmount('');
+      // Here you would redirect to actual payment gateway
+    }, 2000);
+  };
+
+  const quickDepositAmounts = [5000, 10000, 20000, 50000, 100000];
 
   const transactions = [
     { icon: 'arrow-down-left', title: 'Deposit', date: 'Today, 2:30 PM', amount: '+₦5,000', positive: true },
@@ -105,6 +120,73 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Deposit Modal */}
+      {showDepositModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !openingGateway && setShowDepositModal(false)}>
+          <div className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full" style={{ animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Deposit Funds</h2>
+              <button onClick={() => !openingGateway && setShowDepositModal(false)} className="w-8 h-8 rounded-full bg-[#333333] hover:bg-[#3a3a3a] flex items-center justify-center transition-all">
+                <i data-lucide="x" className="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm text-neutral-400 mb-2 block">Amount</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-neutral-400">₦</span>
+                <input
+                  type="number"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full h-14 bg-[#333333] border border-neutral-700 rounded-xl pl-10 pr-4 text-xl font-semibold focus:outline-none focus:border-green-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="text-xs text-neutral-400 mb-2">Quick Select</div>
+              <div className="grid grid-cols-3 gap-2">
+                {quickDepositAmounts.map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setDepositAmount(amount.toString())}
+                    className="h-10 bg-[#333333] hover:bg-[#3a3a3a] border border-neutral-700 hover:border-green-500 rounded-lg text-sm font-medium transition-all"
+                  >
+                    ₦{(amount / 1000)}K
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setShowDepositModal(false)}
+                disabled={openingGateway}
+                className="h-12 bg-[#333333] hover:bg-[#3a3a3a] rounded-xl font-medium transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeposit}
+                disabled={!depositAmount || parseFloat(depositAmount) <= 0 || openingGateway}
+                className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {openingGateway ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Opening Gateway...
+                  </>
+                ) : (
+                  'Continue'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <div className="space-y-1">
@@ -129,12 +211,12 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
+              <button onClick={() => setShowDepositModal(true)} className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
                 <i data-lucide="arrow-down-left" className="w-4 h-4"></i>Deposit
               </button>
-              <button className="h-12 bg-[#2a2a2a] hover:bg-[#333333] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
+              <Link href="/withdraw" className="h-12 bg-[#2a2a2a] hover:bg-[#333333] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
                 <i data-lucide="arrow-up-right" className="w-4 h-4"></i>Withdraw
-              </button>
+              </Link>
             </div>
           </div>
         </div>
