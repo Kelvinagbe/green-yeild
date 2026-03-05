@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Header from '@/green-yeild/Header';
+import ConditionalHeader from '@/green-yeild/ConditionalHeader';
 import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -22,7 +22,7 @@ export default function RootLayout({
         <Script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" strategy="beforeInteractive" />
       </head>
       <body className={inter.className}>
-        <Header />
+        <ConditionalHeader />
         {children}
       </body>
     </html>
