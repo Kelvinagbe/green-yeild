@@ -257,7 +257,7 @@ export default function Dashboard() {
             <div>
               <h3 className="font-medium">Daily Check-in</h3>
               <p className="text-sm text-neutral-500 mt-0.5">
-                {weekDone ? 'Week complete 🎉' : claimedToday ? 'Come back tomorrow!' : `Earn ₦${reward(nextDay).toLocaleString()} today`}
+                {loadP ? '' : weekDone ? 'Week complete 🎉' : claimedToday ? 'Come back tomorrow!' : `Earn ₦${reward(nextDay).toLocaleString()} today`}
               </p>
             </div>
             <div className="w-11 h-11 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -268,9 +268,9 @@ export default function Dashboard() {
             ? <div className="flex gap-2 mb-4">{[0,1,2,3,4,5,6].map(i => <SK key={i} className="flex-1 h-2" />)}</div>
             : <div className="flex gap-1.5 mb-4">{[1,2,3,4,5,6,7].map(d => <div key={d} className={`flex-1 h-2 rounded-full transition-all ${checkedDays.includes(d) ? 'bg-green-500' : d === nextDay && !weekDone ? 'bg-green-500/20' : 'bg-neutral-800'}`} />)}</div>
           }
-          <button onClick={() => setShowModal(true)} disabled={weekDone || claimedToday}
+          <button onClick={() => setShowModal(true)} disabled={loadP || weekDone || claimedToday}
             className="w-full h-11 bg-green-500 hover:bg-green-600 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-all active:scale-95">
-            {weekDone ? '🎉 Week Complete!' : claimedToday ? '✓ Claimed Today' : `Claim Day ${nextDay} · ₦${reward(nextDay).toLocaleString()}`}
+            {loadP ? '…' : weekDone ? '🎉 Week Complete!' : claimedToday ? '✓ Claimed Today' : `Claim Day ${nextDay} · ₦${reward(nextDay).toLocaleString()}`}
           </button>
         </div>
 
