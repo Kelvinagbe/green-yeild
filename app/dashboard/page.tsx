@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ref, onValue, set, push } from 'firebase/database';
+import { useRouter } from 'next/navigation';
+import { ref, onValue, set } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface UserProfile {
   name: string;
   plan: string;
@@ -34,6 +34,8 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+
   const [uid, setUid] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
@@ -42,30 +44,23 @@ export default function Dashboard() {
 
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [openingGateway, setOpeningGateway] = useState(false);
 
-  const quickDepositAmounts = [5000, 10000, 20000, 50000, 100000];
-
-  // ─── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    return onAuthStateChanged(auth, (user) => {
       if (user) setUid(user.uid);
     });
-    return () => unsub();
   }, []);
 
-  // ─── Realtime: profile ─────────────────────────────────────────────────────
+  // ── Profile ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!uid) return;
     const profileRef = ref(db, `users/${uid}/profile`);
-    const unsub = onValue(profileRef, (snap) => {
+    return onValue(profileRef, (snap) => {
       const data = snap.val();
       if (data) {
         setProfile(data);
       } else {
-        // Seed default profile on first login
         const defaultProfile: UserProfile = {
           name: auth.currentUser?.displayName ?? 'User',
           plan: 'Premium Member',
@@ -79,14 +74,12 @@ export default function Dashboard() {
       }
       setLoadingProfile(false);
     });
-    return () => unsub();
   }, [uid]);
 
-  // ─── Realtime: transactions ────────────────────────────────────────────────
+  // ── Transactions ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!uid) return;
-    const txRef = ref(db, `users/${uid}/transactions`);
-    const unsub = onValue(txRef, (snap) => {
+    return onValue(ref(db, `users/${uid}/transactions`), (snap) => {
       const data = snap.val();
       if (data) {
         const list: Transaction[] = Object.entries(data)
@@ -99,10 +92,9 @@ export default function Dashboard() {
       }
       setLoadingTx(false);
     });
-    return () => unsub();
   }, [uid]);
 
-  // ─── Check-in ──────────────────────────────────────────────────────────────
+  // ── Check-in ─────────────────────────────────────────────────────────────────
   const handleCheckIn = () => {
     if (!uid || !profile) return;
     setIsChecking(true);
@@ -119,37 +111,12 @@ export default function Dashboard() {
     }, 800);
   };
 
-  // ─── Deposit ───────────────────────────────────────────────────────────────
-  const handleDeposit = () => {
-    if (!uid || !profile) return;
-    setOpeningGateway(true);
-    setTimeout(() => {
-      const amount = parseFloat(depositAmount);
-      // Record transaction
-      push(ref(db, `users/${uid}/transactions`), {
-        icon: 'arrow-down-left',
-        title: 'Deposit',
-        date: new Date().toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }),
-        amount: `+₦${amount.toLocaleString()}`,
-        positive: true,
-      });
-      // Update balance
-      set(ref(db, `users/${uid}/profile`), {
-        ...profile,
-        balance: profile.balance + amount,
-      });
-      setOpeningGateway(false);
-      setShowDepositModal(false);
-      setDepositAmount('');
-    }, 2000);
-  };
-
-  // ─── Lucide icons ──────────────────────────────────────────────────────────
+  // ── Lucide icons ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).lucide) {
       (window as any).lucide.createIcons();
     }
-  }, [showCheckIn, showDepositModal, transactions, profile]);
+  }, [showCheckIn, transactions, profile]);
 
   const checkedDays = profile?.checkedDays ?? [];
 
@@ -230,78 +197,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Deposit Modal ── */}
-      {showDepositModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => !openingGateway && setShowDepositModal(false)}
-        >
-          <div
-            className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full"
-            style={{ animation: 'slideUp 0.3s ease-out' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Deposit Funds</h2>
-              <button
-                onClick={() => !openingGateway && setShowDepositModal(false)}
-                className="w-8 h-8 rounded-full bg-[#333333] hover:bg-[#3a3a3a] flex items-center justify-center transition-all"
-              >
-                <i data-lucide="x" className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-sm text-neutral-400 mb-2 block">Amount</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-neutral-400">₦</span>
-                <input
-                  type="number"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full h-14 bg-[#333333] border border-neutral-700 rounded-xl pl-10 pr-4 text-xl font-semibold focus:outline-none focus:border-green-500 transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <div className="text-xs text-neutral-400 mb-2">Quick Select</div>
-              <div className="grid grid-cols-3 gap-2">
-                {quickDepositAmounts.map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => setDepositAmount(amount.toString())}
-                    className="h-10 bg-[#333333] hover:bg-[#3a3a3a] border border-neutral-700 hover:border-green-500 rounded-lg text-sm font-medium transition-all"
-                  >
-                    ₦{amount / 1000}K
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setShowDepositModal(false)}
-                disabled={openingGateway}
-                className="h-12 bg-[#333333] hover:bg-[#3a3a3a] rounded-xl font-medium transition-all disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeposit}
-                disabled={!depositAmount || parseFloat(depositAmount) <= 0 || openingGateway}
-                className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {openingGateway ? (
-                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Opening...</>
-                ) : 'Continue'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Main ── */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 
@@ -345,12 +240,13 @@ export default function Dashboard() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setShowDepositModal(true)}
+              {/* ── Deposit now goes to /payment ── */}
+              <Link
+                href="/payment"
                 className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 <i data-lucide="arrow-down-left" className="w-4 h-4" />Deposit
-              </button>
+              </Link>
               <Link
                 href="/withdraw"
                 className="h-12 bg-[#2a2a2a] hover:bg-[#333333] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -364,9 +260,9 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: 'user',          title: 'Profile',  subtitle: 'Manage account', href: '/profile'  },
-            { icon: 'credit-card',   title: 'Plans',    subtitle: 'View subscriptions', href: '/plans' },
-            { icon: 'arrow-up-right',title: 'Withdraw', subtitle: 'Cash out funds', href: '/withdraw' },
+            { icon: 'user',           title: 'Profile',  subtitle: 'Manage account',     href: '/profile'  },
+            { icon: 'credit-card',    title: 'Plans',    subtitle: 'View subscriptions',  href: '/plans'    },
+            { icon: 'arrow-up-right', title: 'Withdraw', subtitle: 'Cash out funds',      href: '/withdraw' },
           ].map((action, i) => (
             <Link
               key={i}
