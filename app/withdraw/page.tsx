@@ -1,375 +1,305 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ref, onValue, set, push, get } from 'firebase/database';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+
+interface Bank { id: string; bankName: string; accountNumber: string; accountName: string; isPrimary?: boolean; }
+interface UserProfile { balance: number; name: string; }
+
+const SK = ({ className = '' }: { className?: string }) => <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} />;
+const fmt = (n: number) => n.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+const fee = (n: number) => parseFloat(Math.min(n * 0.015, 100).toFixed(2));
+
+const QUICK = [5000, 10000, 25000, 50000, 100000];
+
+function Portal({ children }: { children: React.ReactNode }) {
+  const [ok, setOk] = useState(false);
+  useEffect(() => setOk(true), []);
+  return ok ? createPortal(children, document.body) : null;
+}
 
 export default function Withdraw() {
-  const [amount, setAmount] = useState('');
-  const [selectedBank, setSelectedBank] = useState<number | null>(null);
-  const [showAddBank, setShowAddBank] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [uid, setUid]         = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [banks, setBanks]     = useState<Bank[]>([]);
+  const [loadP, setLoadP]     = useState(true);
+  const [loadB, setLoadB]     = useState(true);
+
+  const [amount, setAmount]           = useState('');
+  const [selectedBank, setSelectedBank] = useState<string | null>(null);
+  const [showAdd, setShowAdd]         = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [processing, setProcessing]   = useState(false);
+  const [done, setDone]               = useState(false);
+
+  // add bank form
+  const [newBank, setNewBank]   = useState('');
+  const [newAccNo, setNewAccNo] = useState('');
+  const [newAccName, setNewAccName] = useState('');
+  const [addingBank, setAddingBank] = useState(false);
+  const [bankList, setBankList]     = useState<string[]>([]);
+
+  useEffect(() => onAuthStateChanged(auth, u => { if (u) setUid(u.uid); }), []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).lucide) {
-      (window as any).lucide.createIcons();
-    }
-  }, [showAddBank, showConfirmation, selectedBank]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
+    fetch('https://api.paystack.co/bank?country=nigeria&perPage=100', {
+      headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY}` },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.status) setBankList(d.data.map((b: any) => b.name)); })
+      .catch(() => {});
   }, []);
 
-  const availableBalance = 125340;
+  useEffect(() => {
+    if (!uid) return;
+    const u1 = onValue(ref(db, `users/${uid}/profile`), s => { if (s.val()) setProfile(s.val()); setLoadP(false); });
+    const u2 = onValue(ref(db, `users/${uid}/banks`), s => {
+      const d = s.val();
+      setBanks(d ? Object.entries(d).map(([id, v]: any) => ({ id, ...v })) : []);
+      setLoadB(false);
+    });
+    return () => { u1(); u2(); };
+  }, [uid]);
 
-  const bankAccounts = [
-    { id: 1, bankName: 'Access Bank', accountNumber: '0123456789', accountName: 'John Doe', isPrimary: true },
-    { id: 2, bankName: 'GTBank', accountNumber: '0987654321', accountName: 'John Doe', isPrimary: false },
-    { id: 3, bankName: 'First Bank', accountNumber: '1234567890', accountName: 'John Doe', isPrimary: false }
-  ];
+  const parsed   = parseFloat(amount) || 0;
+  const txFee    = fee(parsed);
+  const canSubmit = parsed > 0 && !!selectedBank && parsed <= (profile?.balance ?? 0);
+  const bank     = banks.find(b => b.id === selectedBank);
 
-  const quickAmounts = [5000, 10000, 25000, 50000, 100000];
-
-  const handleWithdraw = () => setShowConfirmation(true);
-
-  const confirmWithdraw = () => {
-    setWithdrawing(true);
-    setTimeout(() => {
-      setWithdrawing(false);
-      setShowConfirmation(false);
-      setAmount('');
-      setSelectedBank(null);
-    }, 2000);
+  const handleWithdraw = async () => {
+    if (!uid || !profile || !bank) return;
+    setProcessing(true);
+    try {
+      const now = Date.now();
+      const snap = await get(ref(db, `users/${uid}/profile`));
+      const bal: number = snap.val()?.balance ?? 0;
+      await set(ref(db, `users/${uid}/profile/balance`), bal - parsed);
+      await push(ref(db, `users/${uid}/transactions`), {
+        icon: 'arrow-up-right', title: `Withdrawal — ${bank.bankName}`,
+        date: new Date(now).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }),
+        amount: `-₦${fmt(parsed)}`, positive: false,
+      });
+      setDone(true); setShowConfirm(false);
+    } catch (e) { console.error(e); }
+    finally { setProcessing(false); }
   };
 
-  const calculateFee = () => {
-    if (!amount) return 0;
-    const withdrawAmount = parseFloat(amount);
-    return Math.min(withdrawAmount * 0.015, 100);
+  const handleAddBank = async () => {
+    if (!uid || !newBank || newAccNo.length !== 10 || !newAccName) return;
+    setAddingBank(true);
+    await push(ref(db, `users/${uid}/banks`), { bankName: newBank, accountNumber: newAccNo, accountName: newAccName, isPrimary: banks.length === 0 });
+    setNewBank(''); setNewAccNo(''); setNewAccName('');
+    setAddingBank(false); setShowAdd(false);
   };
-
-  const totalAmount = () => {
-    if (!amount) return 0;
-    return parseFloat(amount) + calculateFee();
-  };
-
-  // Skeleton Components
-  const BalanceSkeleton = () => (
-    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="h-4 w-32 bg-neutral-700 rounded mb-3"></div>
-          <div className="h-8 w-40 bg-neutral-700 rounded"></div>
-        </div>
-        <div className="w-12 h-12 bg-neutral-700 rounded-full"></div>
-      </div>
-    </div>
-  );
-
-  const AmountSkeleton = () => (
-    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 space-y-4 animate-pulse">
-      <div className="h-6 w-32 bg-neutral-700 rounded"></div>
-      <div className="h-16 bg-neutral-700 rounded-xl"></div>
-      <div>
-        <div className="h-3 w-20 bg-neutral-700 rounded mb-2"></div>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-10 bg-neutral-700 rounded-lg"></div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const BankSkeleton = () => (
-    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 space-y-4 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="h-6 w-40 bg-neutral-700 rounded"></div>
-        <div className="h-5 w-20 bg-neutral-700 rounded"></div>
-      </div>
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="p-4 bg-neutral-700 rounded-xl">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-neutral-600 rounded-lg"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-5 w-32 bg-neutral-600 rounded"></div>
-                <div className="h-4 w-40 bg-neutral-600 rounded"></div>
-                <div className="h-4 w-28 bg-neutral-600 rounded"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const RecentSkeleton = () => (
-    <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden animate-pulse">
-      <div className="p-4 sm:p-6 border-b border-neutral-700">
-        <div className="h-6 w-40 bg-neutral-700 rounded"></div>
-      </div>
-      <div className="divide-y divide-neutral-700">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="p-4 sm:px-6 sm:py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="w-10 h-10 bg-neutral-700 rounded-full"></div>
-              <div className="space-y-2">
-                <div className="h-5 w-32 bg-neutral-700 rounded"></div>
-                <div className="h-4 w-48 bg-neutral-700 rounded"></div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="h-5 w-24 bg-neutral-700 rounded ml-auto"></div>
-              <div className="h-4 w-20 bg-neutral-700 rounded ml-auto"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#1c1c1c] text-white">
-      <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-
-      <style jsx>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
+      <style>{`
+        @keyframes up  { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes fd  { from{opacity:0} to{opacity:1} }
+        @keyframes ring{ from{stroke-dashoffset:251} to{stroke-dashoffset:0} }
+        @keyframes ck  { from{opacity:0;transform:scale(.4)} to{opacity:1;transform:scale(1)} }
       `}</style>
 
-      {/* Add Bank Modal */}
-      {showAddBank && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddBank(false)}>
-          <div className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()} style={{ animation: 'slideUp 0.3s ease-out' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Add Bank Account</h2>
-              <button onClick={() => setShowAddBank(false)} className="w-8 h-8 rounded-full bg-[#333333] hover:bg-[#3a3a3a] flex items-center justify-center transition-all">
-                <i data-lucide="x" className="w-4 h-4"></i>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-neutral-400 mb-2 block">Bank Name</label>
-                <select className="w-full h-12 bg-[#333333] border border-neutral-700 rounded-xl px-4 focus:outline-none focus:border-green-500 transition-all">
-                  <option value="">Select your bank</option>
-                  <option value="access">Access Bank</option>
-                  <option value="gtb">GTBank</option>
-                  <option value="firstbank">First Bank</option>
-                  <option value="uba">UBA</option>
-                  <option value="zenith">Zenith Bank</option>
-                </select>
+      {/* ── Success portal ── */}
+      {done && (
+        <Portal>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg" style={{ animation: 'fd .2s ease-out' }} onClick={() => { setDone(false); setAmount(''); setSelectedBank(null); }}>
+            <div className="bg-[#1e1e1e] border border-neutral-800 rounded-2xl p-8 max-w-sm w-full text-center space-y-4" style={{ animation: 'up .4s cubic-bezier(.34,1.56,.64,1) both' }} onClick={e => e.stopPropagation()}>
+              <div className="relative w-24 h-24 mx-auto">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="#262626" strokeWidth="5" />
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="#22c55e" strokeWidth="5" strokeLinecap="round" strokeDasharray="251" strokeDashoffset="251" style={{ animation: 'ring .65s ease-out .1s forwards' }} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'ck .3s ease-out .65s both' }}>
+                  <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </div>
               </div>
-
-              <div>
-                <label className="text-sm text-neutral-400 mb-2 block">Account Number</label>
-                <input type="text" placeholder="0123456789" maxLength={10} className="w-full h-12 bg-[#333333] border border-neutral-700 rounded-xl px-4 focus:outline-none focus:border-green-500 transition-all" />
-              </div>
-
-              <div>
-                <label className="text-sm text-neutral-400 mb-2 block">Account Name</label>
-                <input type="text" placeholder="Will be auto-filled" disabled className="w-full h-12 bg-[#333333] border border-neutral-700 rounded-xl px-4 text-neutral-500" />
-              </div>
-
-              <button className="w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95">Add Account</button>
+              <div><p className="text-xl font-semibold">Withdrawal Submitted</p><p className="text-sm text-neutral-400 mt-1">₦{fmt(parsed)} will arrive within 24 hrs</p></div>
+              <p className="text-xs text-neutral-600">Sent to {bank?.bankName} · {bank?.accountNumber}</p>
+              <button onClick={() => { setDone(false); setAmount(''); setSelectedBank(null); }} className="w-full h-11 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95">Done</button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
-      {/* Confirmation Modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !withdrawing && setShowConfirmation(false)}>
-          <div className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()} style={{ animation: 'slideUp 0.3s ease-out' }}>
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i data-lucide="arrow-up-right" className="w-8 h-8 text-green-500"></i>
-              </div>
-              <h2 className="text-2xl font-semibold mb-2">Confirm Withdrawal</h2>
-              <p className="text-neutral-400 text-sm">Please review your withdrawal details</p>
-            </div>
-
-            <div className="bg-[#333333] rounded-xl p-4 mb-6 space-y-3">
+      {/* ── Confirm modal ── */}
+      {showConfirm && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" style={{ animation: 'fd .2s ease-out' }} onClick={() => !processing && setShowConfirm(false)}>
+            <div className="w-full sm:max-w-md bg-[#1e1e1e] border border-neutral-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-5" style={{ animation: 'up .3s ease-out' }} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-neutral-400">Amount</span>
-                <span className="font-semibold">₦{parseFloat(amount).toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-neutral-400">Fee</span>
-                <span className="font-semibold">₦{calculateFee().toFixed(2)}</span>
-              </div>
-              <div className="h-px bg-neutral-700"></div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-neutral-400">Total</span>
-                <span className="text-lg font-semibold text-green-500">₦{totalAmount().toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="bg-[#333333] rounded-xl p-4 mb-6">
-              <div className="text-xs text-neutral-400 mb-2">To Account</div>
-              <div className="font-medium">{bankAccounts.find(b => b.id === selectedBank)?.bankName}</div>
-              <div className="text-sm text-neutral-400">{bankAccounts.find(b => b.id === selectedBank)?.accountNumber} • {bankAccounts.find(b => b.id === selectedBank)?.accountName}</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowConfirmation(false)} disabled={withdrawing} className="h-12 bg-[#333333] hover:bg-[#3a3a3a] rounded-xl font-medium transition-all disabled:opacity-50">Cancel</button>
-              <button onClick={confirmWithdraw} disabled={withdrawing} className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
-                {withdrawing ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Processing...</> : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {loading ? (
-          <>
-            <BalanceSkeleton />
-            <AmountSkeleton />
-            <BankSkeleton />
-            <RecentSkeleton />
-          </>
-        ) : (
-          <>
-            {/* Available Balance */}
-            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-neutral-400 mb-1">Available Balance</div>
-                  <div className="text-3xl font-semibold">₦{availableBalance.toLocaleString()}</div>
-                </div>
-                <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center">
-                  <i data-lucide="wallet" className="w-6 h-6 text-green-500"></i>
-                </div>
-              </div>
-            </div>
-
-            {/* Withdrawal Amount */}
-            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 space-y-4">
-              <h3 className="font-medium">Enter Amount</h3>
-
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-neutral-400">₦</span>
-                <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full h-16 bg-[#2a2a2a] border border-neutral-700 rounded-xl pl-12 pr-4 text-2xl font-semibold focus:outline-none focus:border-green-500 transition-all" />
-              </div>
-
-              <div>
-                <div className="text-xs text-neutral-400 mb-2">Quick Select</div>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {quickAmounts.map((quickAmount) => (
-                    <button key={quickAmount} onClick={() => setAmount(quickAmount.toString())} className="h-10 bg-[#2a2a2a] hover:bg-[#333333] border border-neutral-700 hover:border-green-500 rounded-lg text-sm font-medium transition-all">
-                      ₦{(quickAmount / 1000)}K
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {amount && parseFloat(amount) > 0 && (
-                <div className="bg-[#2a2a2a] rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-400">Withdrawal Amount</span>
-                    <span>₦{parseFloat(amount).toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-400">Transaction Fee (1.5%)</span>
-                    <span>₦{calculateFee().toFixed(2)}</span>
-                  </div>
-                  <div className="h-px bg-neutral-700"></div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-neutral-400">You'll Receive</span>
-                    <span className="text-lg font-semibold text-green-500">₦{parseFloat(amount).toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Select Bank Account */}
-            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium">Select Bank Account</h3>
-                <button onClick={() => setShowAddBank(true)} className="text-sm text-green-500 hover:text-green-400 font-medium flex items-center gap-1">
-                  <i data-lucide="plus" className="w-4 h-4"></i>Add New
+                <h2 className="font-semibold text-lg">Confirm Withdrawal</h2>
+                <button onClick={() => setShowConfirm(false)} className="w-8 h-8 rounded-full bg-[#262626] hover:bg-[#333] flex items-center justify-center transition-all">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
-
-              <div className="space-y-3">
-                {bankAccounts.map((bank) => (
-                  <button key={bank.id} onClick={() => setSelectedBank(bank.id)} className={`w-full p-4 rounded-xl border-2 transition-all text-left ${selectedBank === bank.id ? 'border-green-500 bg-green-500/5' : 'border-neutral-700 bg-[#2a2a2a] hover:border-neutral-600'}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedBank === bank.id ? 'bg-green-500' : 'bg-[#333333]'}`}>
-                          <i data-lucide="building-2" className={`w-5 h-5 ${selectedBank === bank.id ? 'text-white' : 'text-neutral-400'}`}></i>
-                        </div>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {bank.bankName}
-                            {bank.isPrimary && <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">Primary</span>}
-                          </div>
-                          <div className="text-sm text-neutral-400 mt-1">{bank.accountNumber}</div>
-                          <div className="text-sm text-neutral-400">{bank.accountName}</div>
-                        </div>
-                      </div>
-                      {selectedBank === bank.id && <i data-lucide="check-circle" className="w-5 h-5 text-green-500"></i>}
-                    </div>
-                  </button>
+              <div className="bg-[#262626] border border-neutral-800 rounded-xl p-4 space-y-3">
+                {[['Amount', `₦${fmt(parsed)}`], ['Fee (1.5%)', `₦${fmt(txFee)}`]].map(([k, v]) => (
+                  <div key={k} className="flex justify-between text-sm"><span className="text-neutral-400">{k}</span><span>{v}</span></div>
                 ))}
+                <div className="h-px bg-neutral-800" />
+                <div className="flex justify-between"><span className="text-sm text-neutral-400">You receive</span><span className="font-semibold text-green-400">₦{fmt(parsed - txFee)}</span></div>
+              </div>
+              {bank && (
+                <div className="bg-[#262626] border border-neutral-800 rounded-xl p-4">
+                  <p className="text-xs text-neutral-500 mb-1">To Account</p>
+                  <p className="font-medium text-sm">{bank.bankName}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{bank.accountNumber} · {bank.accountName}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setShowConfirm(false)} disabled={processing} className="h-12 bg-[#262626] hover:bg-[#2e2e2e] border border-neutral-700 rounded-xl text-sm font-medium transition-all disabled:opacity-40">Cancel</button>
+                <button onClick={handleWithdraw} disabled={processing} className="h-12 bg-green-500 hover:bg-green-600 rounded-xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40">
+                  {processing ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing…</> : 'Confirm'}
+                </button>
               </div>
             </div>
+          </div>
+        </Portal>
+      )}
 
-            {/* Recent Withdrawals */}
-            <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-neutral-700">
-                <h3 className="font-medium">Recent Withdrawals</h3>
+      {/* ── Add bank modal ── */}
+      {showAdd && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" style={{ animation: 'fd .2s ease-out' }} onClick={() => setShowAdd(false)}>
+            <div className="w-full sm:max-w-md bg-[#1e1e1e] border border-neutral-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-4" style={{ animation: 'up .3s ease-out' }} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-lg">Add Bank Account</h2>
+                <button onClick={() => setShowAdd(false)} className="w-8 h-8 rounded-full bg-[#262626] hover:bg-[#333] flex items-center justify-center transition-all">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
+              {[
+                { label: 'Bank', content: (
+                  <select value={newBank} onChange={e => setNewBank(e.target.value)} className="w-full h-12 bg-[#262626] border border-neutral-700 focus:border-green-500 rounded-xl px-4 text-sm focus:outline-none transition-colors appearance-none">
+                    <option value="">Select bank</option>
+                    {bankList.length === 0 ? <option disabled>Loading banks…</option> : bankList.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                )},
+                { label: 'Account Number', content: (
+                  <input value={newAccNo} onChange={e => setNewAccNo(e.target.value.replace(/\D/,'').slice(0,10))} placeholder="10-digit number" className="w-full h-12 bg-[#262626] border border-neutral-700 focus:border-green-500 rounded-xl px-4 text-sm focus:outline-none transition-colors" />
+                )},
+                { label: 'Account Name', content: (
+                  <input value={newAccName} onChange={e => setNewAccName(e.target.value)} placeholder="Full name on account" className="w-full h-12 bg-[#262626] border border-neutral-700 focus:border-green-500 rounded-xl px-4 text-sm focus:outline-none transition-colors" />
+                )},
+              ].map(({ label, content }) => (
+                <div key={label}><label className="text-xs text-neutral-500 mb-1.5 block">{label}</label>{content}</div>
+              ))}
+              <button onClick={handleAddBank} disabled={addingBank || !newBank || newAccNo.length !== 10 || !newAccName} className="w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-semibold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed mt-2">
+                {addingBank ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Adding…</> : 'Add Account'}
+              </button>
+            </div>
+          </div>
+        </Portal>
+      )}
 
-              <div className="divide-y divide-neutral-700">
-                {[
-                  { amount: 50000, bank: 'Access Bank', account: '0123456789', date: 'Jan 28, 2026', status: 'Completed', statusColor: 'green' },
-                  { amount: 25000, bank: 'GTBank', account: '0987654321', date: 'Jan 20, 2026', status: 'Completed', statusColor: 'green' },
-                  { amount: 15000, bank: 'First Bank', account: '1234567890', date: 'Jan 15, 2026', status: 'Completed', statusColor: 'green' }
-                ].map((withdrawal, index) => (
-                  <div key={index} className="p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="arrow-up-right" className="w-4 h-4"></i>
+      <main className="max-w-lg mx-auto px-4 py-6 space-y-5">
+
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-semibold">Withdraw</h1>
+          <p className="text-sm text-neutral-500 mt-0.5">Transfer funds to your bank account</p>
+        </div>
+
+        {/* Balance */}
+        <div className="bg-[#262626] border border-neutral-800 rounded-2xl p-5 flex items-center justify-between">
+          {loadP ? <><SK className="h-5 w-28" /><SK className="h-8 w-36" /></> : (
+            <>
+              <div><p className="text-xs text-neutral-500 mb-1">Available Balance</p><p className="text-2xl font-semibold">₦{fmt(profile?.balance ?? 0)}</p></div>
+              <div className="w-11 h-11 bg-green-500/10 rounded-full flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Amount input */}
+        <div className="bg-[#262626] border border-neutral-800 rounded-2xl p-5 space-y-4">
+          <label className="text-xs text-neutral-500 block">Amount</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-xl select-none">₦</span>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00"
+              className="w-full h-14 bg-[#1e1e1e] border border-neutral-700 focus:border-green-500 rounded-xl pl-10 pr-4 text-xl font-semibold focus:outline-none transition-colors" />
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {QUICK.map(q => (
+              <button key={q} onClick={() => setAmount(q.toString())} className={`h-9 rounded-lg text-xs font-medium border transition-all ${parsed === q ? 'bg-green-500 border-green-500 text-white' : 'bg-[#1e1e1e] border-neutral-700 hover:border-neutral-500 text-neutral-400'}`}>
+                ₦{q >= 1000 ? `${q/1000}K` : q}
+              </button>
+            ))}
+          </div>
+          {parsed > 0 && (
+            <div className="bg-[#1e1e1e] border border-neutral-800 rounded-xl p-3 space-y-2">
+              {[['Amount', `₦${fmt(parsed)}`], ['Fee (1.5%)', `₦${fmt(txFee)}`]].map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs"><span className="text-neutral-500">{k}</span><span>{v}</span></div>
+              ))}
+              <div className="h-px bg-neutral-800" />
+              <div className="flex justify-between text-sm"><span className="text-neutral-400">You receive</span><span className="font-semibold text-green-400">₦{fmt(parsed - txFee)}</span></div>
+            </div>
+          )}
+        </div>
+
+        {/* Bank accounts */}
+        <div className="bg-[#262626] border border-neutral-800 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Bank Account</p>
+            <button onClick={() => setShowAdd(true)} className="text-xs text-green-400 hover:text-green-300 font-medium flex items-center gap-1 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Add New
+            </button>
+          </div>
+          {loadB ? (
+            <div className="space-y-2">{[0,1].map(i => <SK key={i} className="h-16 rounded-xl" />)}</div>
+          ) : banks.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-neutral-500">No bank accounts yet</p>
+              <button onClick={() => setShowAdd(true)} className="text-xs text-green-400 hover:text-green-300 mt-1 transition-colors">Add one now</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {banks.map(b => (
+                <button key={b.id} onClick={() => setSelectedBank(b.id)}
+                  className={`w-full p-4 rounded-xl border text-left transition-all ${selectedBank === b.id ? 'border-green-500/60 bg-green-500/5' : 'border-neutral-800 hover:border-neutral-600'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${selectedBank === b.id ? 'bg-green-500' : 'bg-[#1e1e1e]'}`}>
+                        <svg className={`w-4 h-4 ${selectedBank === b.id ? 'text-white' : 'text-neutral-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
                       </div>
                       <div>
-                        <div className="font-medium text-sm sm:text-base">{withdrawal.bank}</div>
-                        <div className="text-xs sm:text-sm text-neutral-400">{withdrawal.account} • {withdrawal.date}</div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {b.bankName}
+                          {b.isPrimary && <span className="text-[10px] px-1.5 py-0.5 bg-green-500/15 text-green-400 rounded-full">Primary</span>}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-0.5">{b.accountNumber} · {b.accountName}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium text-sm sm:text-base">₦{withdrawal.amount.toLocaleString()}</div>
-                      <div className={`text-xs text-${withdrawal.statusColor}-500`}>{withdrawal.status}</div>
-                    </div>
+                    {selectedBank === b.id && (
+                      <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    )}
                   </div>
-                ))}
-              </div>
+                </button>
+              ))}
             </div>
+          )}
+        </div>
 
-            {/* Withdraw Button */}
-            <button onClick={handleWithdraw} disabled={!amount || parseFloat(amount) <= 0 || !selectedBank || parseFloat(amount) > availableBalance} className="w-full h-14 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-500">
-              <i data-lucide="arrow-up-right" className="w-5 h-5"></i>Withdraw ₦{amount ? parseFloat(amount).toLocaleString() : '0'}
-            </button>
+        {/* Info */}
+        <div className="bg-green-500/5 border border-green-500/15 rounded-xl p-4 flex gap-3">
+          <svg className="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <p className="text-xs text-neutral-400">Withdrawals are processed within 24 hrs on business days. A fee of 1.5% (max ₦100) applies.</p>
+        </div>
 
-            {/* Info Banner */}
-            <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-500/20 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <i data-lucide="info" className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"></i>
-                <div className="text-sm text-neutral-300">
-                  <strong>Processing Time:</strong> Withdrawals are typically processed within 24 hours on business days. A fee of 1.5% (max ₦100) applies to all withdrawals.
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        {/* Submit */}
+        <button onClick={() => setShowConfirm(true)} disabled={!canSubmit}
+          className="w-full h-14 bg-green-500 hover:bg-green-600 rounded-xl font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+          Withdraw{parsed > 0 ? ` ₦${fmt(parsed)}` : ''}
+        </button>
 
-        <div className="h-8"></div>
+        <div className="h-6" />
       </main>
     </div>
   );
