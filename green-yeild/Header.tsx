@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 import { auth, db } from '@/lib/firebase';
-import Sidebar from './Sidebar';
+import Sidebar from './Slidebar';
 
 interface UserProfile {
   name: string;
