@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
-
+ 
 // ── Firebase Admin (initialise once) ─────────────────────────────────────────
 if (!getApps().length) {
   initializeApp({
