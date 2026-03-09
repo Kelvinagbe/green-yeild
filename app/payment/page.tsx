@@ -11,7 +11,7 @@ interface UserProfile {
   name: string;
   balance: number;
 }
-
+ 
 declare global {
   interface Window {
     PaystackPop: {
