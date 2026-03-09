@@ -1,163 +1,188 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { ref, onValue, set, push } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
-interface UserProfile { name: string; plan: string; balance: number; growth: number; streak: number; checkedDays: number[]; }
-interface Transaction { id: string; icon: string; title: string; date: string; amount: string; positive: boolean; }
+interface UserProfile {
+  name: string; plan: string; balance: number; growth: number;
+  streak: number; checkedDays: number[]; lastClaimedDate?: string;
+}
+interface Tx { id: string; icon: string; title: string; date: string; amount: string; positive: boolean; }
 
 const SK = ({ className = '' }: { className?: string }) => <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} />;
-const DAY_REWARD = (day: number) => day * 100; // ₦100 × day number
+const reward = (day: number) => day * 100;
+const today  = () => new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
 
+// ── Success portal ────────────────────────────────────────────────────────────
+function SuccessPortal({ day, amount, onClose }: { day: number; amount: number; onClose: () => void }) {
+  const [ok, setOk] = useState(false);
+  useEffect(() => { setOk(true); }, []);
+  if (!ok) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg" style={{ animation: 'fd .2s ease-out both' }} onClick={onClose}>
+      <div className="bg-[#1e1e1e] border border-neutral-800 rounded-2xl p-8 max-w-sm w-full text-center space-y-4" style={{ animation: 'pop .4s cubic-bezier(.34,1.56,.64,1) both' }} onClick={e => e.stopPropagation()}>
+        <div className="relative w-24 h-24 mx-auto">
+          <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none" stroke="#262626" strokeWidth="5" />
+            <circle cx="48" cy="48" r="40" fill="none" stroke="#22c55e" strokeWidth="5" strokeLinecap="round" strokeDasharray="251" strokeDashoffset="251" style={{ animation: 'ring .65s ease-out .1s forwards' }} />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'ck .3s ease-out .65s both' }}>
+            <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+        </div>
+        <div style={{ animation: 'fd .3s ease-out .7s both' }}>
+          <p className="text-xl font-semibold">Day {day} Claimed! 🎉</p>
+          <p className="text-sm text-neutral-400 mt-1">You earned</p>
+          <p className="text-4xl font-bold text-green-400 mt-1">+₦{amount.toLocaleString()}</p>
+        </div>
+        <p className="text-xs text-neutral-600" style={{ animation: 'fd .3s ease-out .85s both' }}>Credited to your wallet instantly</p>
+        <button onClick={onClose} className="w-full h-11 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95" style={{ animation: 'fd .3s ease-out .95s both' }}>Awesome!</button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const [uid, setUid]         = useState<string | null>(null);
+  const [uid, setUid]     = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [txs, setTxs]         = useState<Transaction[] | null>(null);
-  const [loadingP, setLoadingP] = useState(true);
-  const [loadingT, setLoadingT] = useState(true);
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [checking, setChecking]       = useState(false);
-  const [checkSuccess, setCheckSuccess] = useState<number | null>(null); // reward amount
+  const [txs, setTxs]     = useState<Tx[] | null>(null);
+  const [loadP, setLoadP] = useState(true);
+  const [loadT, setLoadT] = useState(true);
+  const [showModal, setShowModal]     = useState(false);
+  const [claiming, setClaiming]       = useState(false);
+  const [success, setSuccess]         = useState<{ day: number; amount: number } | null>(null);
 
   useEffect(() => onAuthStateChanged(auth, u => { if (u) setUid(u.uid); }), []);
 
   useEffect(() => {
     if (!uid) return;
     const pRef = ref(db, `users/${uid}/profile`);
-    return onValue(pRef, snap => {
+    const u1 = onValue(pRef, snap => {
       const d = snap.val();
-      if (d) { setProfile(d); }
-      else {
-        const def: UserProfile = { name: auth.currentUser?.displayName ?? 'User', plan: 'Premium Member', balance: 0, growth: 0, streak: 0, checkedDays: [] };
-        set(pRef, def); setProfile(def);
+      if (d) {
+        // Firebase drops empty arrays — normalise to []
+        setProfile({ ...d, checkedDays: Array.isArray(d.checkedDays) ? d.checkedDays : [] });
+      } else {
+        const def: UserProfile = { name: auth.currentUser?.displayName ?? 'User', plan: 'Premium Member', balance: 0, growth: 0, streak: 0, checkedDays: [], lastClaimedDate: '' };
+        set(pRef, def);
+        setProfile(def);
       }
-      setLoadingP(false);
+      setLoadP(false);
     });
-  }, [uid]);
-
-  useEffect(() => {
-    if (!uid) return;
-    return onValue(ref(db, `users/${uid}/transactions`), snap => {
+    const u2 = onValue(ref(db, `users/${uid}/transactions`), snap => {
       const d = snap.val();
-      setTxs(d ? (Object.entries(d).map(([id, v]: any) => ({ id, ...v })) as Transaction[]).reverse().slice(0, 5) : []);
-      setLoadingT(false);
+      setTxs(d ? (Object.entries(d).map(([id, v]: any) => ({ id, ...v })) as Tx[]).reverse().slice(0, 5) : []);
+      setLoadT(false);
     });
+    return () => { u1(); u2(); };
   }, [uid]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).lucide) (window as any).lucide.createIcons();
-  }, [showCheckIn, txs, profile, checkSuccess]);
+  const checkedDays   = profile?.checkedDays ?? [];
+  const nextDay       = checkedDays.length + 1;           // next day to claim (1–7)
+  const weekDone      = checkedDays.length >= 7;
+  // Prevent re-claiming same day: compare lastClaimedDate to today's date string
+  const claimedToday  = profile?.lastClaimedDate === today();
+  const canClaim      = !weekDone && !claimedToday;
 
-  const checkedDays = profile?.checkedDays ?? [];
-  const nextDay = checkedDays.length + 1;
-  const alreadyChecked = checkedDays.includes(nextDay) || nextDay > 7;
-
-  const handleCheckIn = async () => {
-    if (!uid || !profile || checking || alreadyChecked) return;
-    setChecking(true);
-
-    const reward = DAY_REWARD(nextDay);
-    const updated: UserProfile = {
-      ...profile,
-      checkedDays: [...checkedDays, nextDay],
-      streak: nextDay,
-      balance: profile.balance + reward,
-    };
-
-    await set(ref(db, `users/${uid}/profile`), updated);
-    await push(ref(db, `users/${uid}/transactions`), {
-      icon: 'gift',
-      title: `Day ${nextDay} Check-in Reward`,
-      date: new Date().toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }),
-      amount: `+₦${reward.toLocaleString()}`,
-      positive: true,
-    });
-
-    setChecking(false);
-    setCheckSuccess(reward);
+  const handleClaim = async () => {
+    if (!uid || !profile || claiming || !canClaim) return;
+    setClaiming(true);
+    try {
+      const r = reward(nextDay);
+      const updated: UserProfile = {
+        ...profile,
+        checkedDays: [...checkedDays, nextDay],
+        streak: nextDay,
+        balance: (profile.balance ?? 0) + r,
+        lastClaimedDate: today(),
+      };
+      await set(ref(db, `users/${uid}/profile`), updated);
+      await push(ref(db, `users/${uid}/transactions`), {
+        icon: 'gift',
+        title: `Day ${nextDay} Check-in Reward`,
+        date: new Date().toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }),
+        amount: `+₦${r.toLocaleString()}`,
+        positive: true,
+      });
+      setShowModal(false);
+      setSuccess({ day: nextDay, amount: r });
+    } catch (e) {
+      console.error('Check-in failed:', e);
+    } finally {
+      setClaiming(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#1c1c1c] text-white">
       <style>{`
-        @keyframes slideUp { from { opacity:0; transform:translateY(20px) scale(0.95) } to { opacity:1; transform:translateY(0) scale(1) } }
-        @keyframes drawRing { from { stroke-dashoffset:163 } to { stroke-dashoffset:0 } }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes checkIn { from { opacity:0; transform:scale(0.3) } to { opacity:1; transform:scale(1) } }
+        @keyframes fd   { from{opacity:0}                              to{opacity:1} }
+        @keyframes pop  { from{opacity:0;transform:scale(.85)}         to{opacity:1;transform:scale(1)} }
+        @keyframes ring { from{stroke-dashoffset:251}                  to{stroke-dashoffset:0} }
+        @keyframes ck   { from{opacity:0;transform:scale(.4)}          to{opacity:1;transform:scale(1)} }
+        @keyframes up   { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
       `}</style>
 
-      {/* ── Check-in Success Modal ── */}
-      {checkSuccess !== null && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn .2s ease-out' }} onClick={() => { setCheckSuccess(null); setShowCheckIn(false); }}>
-          <div className="bg-[#1e1e1e] border border-neutral-800 rounded-2xl p-8 max-w-sm w-full text-center space-y-4" style={{ animation: 'slideUp .35s ease-out' }} onClick={e => e.stopPropagation()}>
-            <div className="relative w-20 h-20 mx-auto">
-              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 60 60">
-                <circle cx="30" cy="30" r="26" fill="none" stroke="#262626" strokeWidth="4" />
-                <circle cx="30" cy="30" r="26" fill="none" stroke="#22c55e" strokeWidth="4" strokeLinecap="round" strokeDasharray="163" strokeDashoffset="163" style={{ animation: 'drawRing .6s ease-out .1s forwards' }} />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'checkIn .3s ease-out .6s both' }}>
-                <svg className="w-9 h-9 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </div>
-            </div>
-            <div>
-              <p className="text-lg font-semibold">Day {nextDay - 1} Claimed!</p>
-              <p className="text-sm text-neutral-400 mt-1">You earned <span className="text-green-400 font-semibold">+₦{checkSuccess.toLocaleString()}</span> today</p>
-            </div>
-            <p className="text-xs text-neutral-600">Credited to your wallet instantly</p>
-            <button onClick={() => { setCheckSuccess(null); setShowCheckIn(false); }} className="w-full h-11 bg-[#2a2a2a] hover:bg-[#333] rounded-xl text-sm font-medium transition-all">Done</button>
-          </div>
-        </div>
-      )}
+      {/* Success portal */}
+      {success && <SuccessPortal day={success.day} amount={success.amount} onClose={() => setSuccess(null)} />}
 
-      {/* ── Check-in Modal ── */}
-      {showCheckIn && checkSuccess === null && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !checking && setShowCheckIn(false)}>
-          <div className="bg-[#2a2a2a] border border-neutral-700 rounded-2xl p-6 max-w-md w-full" style={{ animation: 'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i data-lucide="calendar-check" className="w-8 h-8 text-green-500" />
+      {/* Check-in modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ animation: 'fd .2s ease-out' }} onClick={() => !claiming && setShowModal(false)}>
+          <div className="bg-[#1e1e1e] border border-neutral-800 rounded-2xl p-6 max-w-md w-full" style={{ animation: 'up .3s ease-out' }} onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12v10H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
               </div>
-              <h2 className="text-2xl font-semibold mb-1">Daily Check-in</h2>
-              <p className="text-neutral-400 text-sm">Keep your streak going!</p>
+              <h2 className="text-xl font-semibold">Daily Check-in</h2>
+              <p className="text-sm text-neutral-500 mt-1">Check in each day to earn rewards</p>
             </div>
 
             {/* Day grid */}
-            <div className="grid grid-cols-7 gap-2 mb-6">
-              {[1,2,3,4,5,6,7].map(day => (
-                <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all ${checkedDays.includes(day) ? 'bg-green-500 text-white' : 'bg-[#3a3a3a] text-neutral-400'}`}>
-                  <div className="text-[10px] opacity-60">Day</div>
-                  <div className="text-base font-semibold">{day}</div>
-                  <div className="text-[9px] opacity-70">₦{(day * 100).toLocaleString()}</div>
-                </div>
-              ))}
+            <div className="grid grid-cols-7 gap-1.5 mb-5">
+              {[1,2,3,4,5,6,7].map(d => {
+                const done = checkedDays.includes(d);
+                const cur  = d === nextDay && !weekDone;
+                return (
+                  <div key={d} className={`aspect-square rounded-xl flex flex-col items-center justify-center border text-center transition-all ${done ? 'bg-green-500 border-green-500 text-white' : cur ? 'border-green-500/40 bg-green-500/5 text-green-400' : 'border-neutral-800 bg-[#262626] text-neutral-600'}`}>
+                    <span className="text-[9px] opacity-60">Day</span>
+                    <span className="text-sm font-bold leading-none">{d}</span>
+                    <span className="text-[8px] mt-0.5 opacity-60">₦{d * 100}</span>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Streak */}
-            <div className="bg-[#333] rounded-xl p-4 mb-6 flex items-center justify-between">
-              <div>
-                <div className="text-sm text-neutral-400">Current Streak</div>
-                <div className="text-2xl font-semibold text-green-500">{checkedDays.length} days</div>
-              </div>
-              <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center">
-                <i data-lucide="flame" className="w-6 h-6 text-green-500" />
-              </div>
+            {/* Stats row */}
+            <div className="bg-[#262626] border border-neutral-800 rounded-xl p-4 mb-5 flex justify-between items-center">
+              <div><p className="text-xs text-neutral-500 mb-0.5">Streak</p><p className="text-xl font-bold text-green-400">{checkedDays.length}<span className="text-sm font-normal text-neutral-500"> days</span></p></div>
+              <div className="text-right"><p className="text-xs text-neutral-500 mb-0.5">Today's reward</p><p className="text-xl font-bold text-green-400">₦{weekDone ? 0 : reward(nextDay)}</p></div>
             </div>
 
-            {nextDay > 7 ? (
-              <div className="text-center">
-                <div className="text-green-500 font-medium mb-2">🎉 Week Complete!</div>
-                <button onClick={() => setShowCheckIn(false)} className="w-full h-12 bg-[#333] hover:bg-[#3a3a3a] rounded-xl font-medium transition-all">Close</button>
+            {weekDone ? (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-green-400 font-medium">🎉 Week Complete! See you next week.</p>
+                <button onClick={() => setShowModal(false)} className="w-full h-11 bg-[#262626] hover:bg-[#2e2e2e] border border-neutral-700 rounded-xl text-sm font-medium transition-all">Close</button>
+              </div>
+            ) : claimedToday ? (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-neutral-500">✓ Already claimed today. Come back tomorrow!</p>
+                <button onClick={() => setShowModal(false)} className="w-full h-11 bg-[#262626] hover:bg-[#2e2e2e] border border-neutral-700 rounded-xl text-sm font-medium transition-all">Close</button>
               </div>
             ) : (
-              <button onClick={handleCheckIn} disabled={checking || alreadyChecked} className="w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
-                {checking
-                  ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Claiming...</>
-                  : alreadyChecked
-                  ? 'Already claimed today'
-                  : <><i data-lucide="check-circle" className="w-5 h-5" />Claim ₦{DAY_REWARD(nextDay).toLocaleString()} • Day {nextDay}</>
+              <button onClick={handleClaim} disabled={claiming} className="w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
+                {claiming
+                  ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Claiming…</>
+                  : <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Claim Day {nextDay} · ₦{reward(nextDay).toLocaleString()}
+                    </>
                 }
               </button>
             )}
@@ -168,22 +193,25 @@ export default function Dashboard() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 
         {/* Name */}
-        {loadingP
+        {loadP
           ? <div className="space-y-2"><SK className="h-8 w-48" /><SK className="h-4 w-28" /></div>
-          : <div className="space-y-1"><h1 className="text-2xl sm:text-3xl font-medium">{profile?.name}</h1><p className="text-sm text-neutral-400">{profile?.plan}</p></div>
+          : <div><h1 className="text-2xl sm:text-3xl font-medium">{profile?.name}</h1><p className="text-sm text-neutral-400 mt-0.5">{profile?.plan}</p></div>
         }
 
-        {/* Balance Card */}
+        {/* Balance card */}
         <div className="relative">
           <div className="absolute -inset-[2px] bg-gradient-to-br from-green-500 to-green-600 rounded-2xl sm:rounded-3xl" />
           <div className="relative bg-[#1c1c1c] rounded-2xl sm:rounded-3xl p-6 sm:p-8 space-y-6">
             <div className="space-y-2">
-              <div className="text-sm text-neutral-400">Total Balance</div>
-              {loadingP ? <><SK className="h-12 w-56" /><SK className="h-4 w-32" /></> : (
+              <p className="text-sm text-neutral-400">Total Balance</p>
+              {loadP ? <><SK className="h-12 w-56" /><SK className="h-4 w-32" /></> : (
                 <>
-                  <div className="text-4xl sm:text-5xl font-semibold tracking-tight">₦{(profile?.balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                  <p className="text-4xl sm:text-5xl font-semibold tracking-tight">₦{(profile?.balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="flex items-center gap-1 text-green-500"><i data-lucide="trending-up" className="w-4 h-4" /><span className="font-medium">+{profile?.growth ?? 0}%</span></div>
+                    <span className="flex items-center gap-1 text-green-500 font-medium">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                      +{profile?.growth ?? 0}%
+                    </span>
                     <span className="text-neutral-500">this month</span>
                   </div>
                 </>
@@ -191,58 +219,66 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Link href="/payment" className="h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
-                <i data-lucide="arrow-down-left" className="w-4 h-4" />Deposit
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>Deposit
               </Link>
               <Link href="/withdraw" className="h-12 bg-[#2a2a2a] hover:bg-[#333] rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2">
-                <i data-lucide="arrow-up-right" className="w-4 h-4" />Withdraw
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>Withdraw
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick actions */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: 'user',           title: 'Profile',  subtitle: 'Manage account',    href: '/profile'  },
-            { icon: 'credit-card',    title: 'Plans',    subtitle: 'View subscriptions', href: '/plans'    },
-            { icon: 'arrow-up-right', title: 'Withdraw', subtitle: 'Cash out funds',     href: '/withdraw' },
-          ].map((a, i) => (
-            <Link key={i} href={a.href} className="bg-[#262626] border border-neutral-700 hover:border-neutral-600 hover:bg-[#2a2a2a] rounded-xl p-4 transition-all active:scale-95 text-center">
-              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3 mx-auto"><i data-lucide={a.icon} className="w-5 h-5 text-green-500" /></div>
-              <div className="text-sm font-medium mb-1">{a.title}</div>
-              <div className="text-xs text-neutral-400">{a.subtitle}</div>
+          {([
+            { label: 'Profile',  sub: 'Manage account',    href: '/profile',  path: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+            { label: 'Plans',    sub: 'View subscriptions', href: '/plans',    path: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+            { label: 'Withdraw', sub: 'Cash out funds',     href: '/withdraw', path: 'M5 15l7-7 7 7' },
+          ] as const).map(a => (
+            <Link key={a.href} href={a.href} className="bg-[#262626] border border-neutral-800 hover:border-neutral-700 hover:bg-[#2a2a2a] rounded-xl p-4 transition-all active:scale-95 text-center">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3 mx-auto">
+                <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d={a.path} /></svg>
+              </div>
+              <p className="text-sm font-medium mb-0.5">{a.label}</p>
+              <p className="text-xs text-neutral-500">{a.sub}</p>
             </Link>
           ))}
         </div>
 
         {/* Invest */}
-        <Link href="/plans" className="w-full h-14 bg-[#262626] hover:bg-[#2a2a2a] border border-neutral-700 hover:border-neutral-600 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-          <i data-lucide="trending-up" className="w-5 h-5" />Start Investing
+        <Link href="/plans" className="w-full h-14 bg-[#262626] hover:bg-[#2a2a2a] border border-neutral-800 hover:border-neutral-700 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          Start Investing
         </Link>
 
-        {/* Daily Check-in */}
-        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        {/* Check-in card */}
+        <div className="bg-[#262626] border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <div><h3 className="font-medium mb-1">Daily Check-in</h3><p className="text-sm text-neutral-400">Earn ₦{DAY_REWARD(nextDay > 7 ? 7 : nextDay).toLocaleString()} today</p></div>
-            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center"><i data-lucide="gift" className="w-6 h-6 text-green-500" /></div>
+            <div>
+              <h3 className="font-medium">Daily Check-in</h3>
+              <p className="text-sm text-neutral-500 mt-0.5">
+                {weekDone ? 'Week complete 🎉' : claimedToday ? 'Come back tomorrow!' : `Earn ₦${reward(nextDay).toLocaleString()} today`}
+              </p>
+            </div>
+            <div className="w-11 h-11 rounded-full bg-green-500/10 flex items-center justify-center">
+              <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12v10H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
+            </div>
           </div>
-
-          {loadingP
+          {loadP
             ? <div className="flex gap-2 mb-4">{[0,1,2,3,4,5,6].map(i => <SK key={i} className="flex-1 h-2" />)}</div>
-            : <div className="flex gap-2 mb-4">{[1,2,3,4,5,6,7].map(d => <div key={d} className={`flex-1 h-2 rounded-full transition-all ${checkedDays.includes(d) ? 'bg-green-500' : 'bg-[#3a3a3a]'}`} />)}</div>
+            : <div className="flex gap-1.5 mb-4">{[1,2,3,4,5,6,7].map(d => <div key={d} className={`flex-1 h-2 rounded-full transition-all ${checkedDays.includes(d) ? 'bg-green-500' : d === nextDay && !weekDone ? 'bg-green-500/20' : 'bg-neutral-800'}`} />)}</div>
           }
-
-          <button onClick={() => setShowCheckIn(true)} disabled={alreadyChecked && checkSuccess === null} className="w-full h-11 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-            {alreadyChecked ? 'All Days Claimed 🎉' : `Claim ₦${DAY_REWARD(nextDay).toLocaleString()} • Day ${nextDay}`}
+          <button onClick={() => setShowModal(true)} disabled={weekDone || claimedToday}
+            className="w-full h-11 bg-green-500 hover:bg-green-600 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-all active:scale-95">
+            {weekDone ? '🎉 Week Complete!' : claimedToday ? '✓ Claimed Today' : `Claim Day ${nextDay} · ₦${reward(nextDay).toLocaleString()}`}
           </button>
         </div>
 
         {/* Transactions */}
-        <div className="bg-[#262626] border border-neutral-700 rounded-xl sm:rounded-2xl overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-neutral-700"><h3 className="font-medium">Recent Transactions</h3></div>
-
-          {loadingT ? (
-            <div className="divide-y divide-neutral-700">
+        <div className="bg-[#262626] border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-neutral-800"><h3 className="font-medium">Recent Transactions</h3></div>
+          {loadT ? (
+            <div className="divide-y divide-neutral-800">
               {[0,1,2,3].map(i => (
                 <div key={i} className="p-4 sm:px-6 sm:py-4 flex items-center gap-4">
                   <SK className="w-10 h-10 rounded-full shrink-0" />
@@ -252,23 +288,26 @@ export default function Dashboard() {
               ))}
             </div>
           ) : txs && txs.length > 0 ? (
-            <div className="divide-y divide-neutral-700">
+            <div className="divide-y divide-neutral-800">
               {txs.map(tx => (
                 <div key={tx.id} className="p-4 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-[#2a2a2a] transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-[#2a2a2a] flex items-center justify-center flex-shrink-0"><i data-lucide={tx.icon} className="w-4 h-4" /></div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm sm:text-base truncate">{tx.title}</div>
-                    <div className="text-xs sm:text-sm text-neutral-400">{tx.date}</div>
+                  <div className="w-10 h-10 rounded-full bg-[#1e1e1e] flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      {tx.positive ? <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />}
+                    </svg>
                   </div>
-                  <div className={`font-medium text-sm sm:text-base flex-shrink-0 ${tx.positive ? 'text-green-500' : tx.amount.startsWith('-') ? 'text-red-500' : 'text-neutral-400'}`}>{tx.amount}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{tx.title}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{tx.date}</p>
+                  </div>
+                  <span className={`font-medium text-sm shrink-0 ${tx.positive ? 'text-green-400' : tx.amount.startsWith('-') ? 'text-red-400' : 'text-neutral-400'}`}>{tx.amount}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center text-neutral-500 text-sm">No transactions yet</div>
+            <div className="p-8 text-center text-sm text-neutral-600">No transactions yet</div>
           )}
-
-          <button className="w-full p-4 text-sm text-neutral-400 hover:text-white hover:bg-[#2a2a2a] transition-colors">View All Transactions</button>
+          <Link href="/transactions" className="block w-full p-4 text-sm text-center text-neutral-500 hover:text-white hover:bg-[#2a2a2a] transition-colors">View All Transactions</Link>
         </div>
 
         <div className="h-8" />
