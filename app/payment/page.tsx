@@ -32,7 +32,7 @@ interface PaystackSetupOptions {
 }
 
 const QUICK_AMOUNTS = [5000, 10000, 20000, 50000, 100000];
-const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!;
+const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
 export default function PaymentPage() {
   const router = useRouter();
