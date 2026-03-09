@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const SECRET     = process.env.PAYSTACK_SECRET_KEY!;
 const MAX_TRIES  = 3;
 const LOCK_MS    = 5 * 60 * 60 * 1000; // 5 hours
-
+ 
 // In-memory attempt store per uid (resets on server restart, good enough)
 // For production persistence swap with Redis/Upstash KV
 const attempts = new Map<string, { count: number; lockedUntil: number }>();
