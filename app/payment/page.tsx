@@ -11,7 +11,7 @@ interface UserProfile {
   name: string;
   balance: number;
 }
- 
+
 declare global {
   interface Window {
     PaystackPop: {
@@ -33,7 +33,7 @@ interface PaystackSetupOptions {
 
 const QUICK_AMOUNTS = [5000, 10000, 20000, 50000, 100000];
 const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!;
- 
+
 export default function PaymentPage() {
   const router = useRouter();
 
@@ -97,8 +97,8 @@ export default function PaymentPage() {
       ref: reference,
       metadata: { uid, name: profile?.name ?? '' },
       onSuccess: (tx) => {
-        // Webhook on the backend verifies + writes balance/transaction to Firebase.
-        // We just show the success screen here.
+        // Webhook on backend verifies + writes to Firebase.
+        // We just show the success modal here.
         setSuccessRef(tx.reference);
         setStatus('success');
       },
@@ -111,47 +111,6 @@ export default function PaymentPage() {
   const parsedAmount = parseFloat(amount);
   const isValid = !isNaN(parsedAmount) && parsedAmount > 0;
 
-  // ── Success screen ────────────────────────────────────────────────────────
-  if (status === 'success') {
-    return (
-      <div className="min-h-screen bg-[#1c1c1c] text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="w-20 h-20 bg-green-500/15 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold mb-2">Payment Received</h1>
-            <p className="text-neutral-400 text-sm">
-              Your deposit of{' '}
-              <span className="text-white font-medium">
-                ₦{parsedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-              </span>{' '}
-              is being confirmed.
-            </p>
-          </div>
-          {successRef && (
-            <div className="bg-[#262626] border border-neutral-700 rounded-xl p-4 text-left">
-              <div className="text-xs text-neutral-500 mb-1">Reference</div>
-              <div className="font-mono text-sm text-neutral-300 break-all">{successRef}</div>
-            </div>
-          )}
-          <p className="text-xs text-neutral-500">
-            Your balance will update automatically once our server confirms the payment.
-          </p>
-          <Link
-            href="/dashboard"
-            className="block w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-all active:scale-95 text-center leading-[3rem]"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#1c1c1c] text-white">
       <style jsx>{`
@@ -159,10 +118,125 @@ export default function PaymentPage() {
           from { opacity: 0; transform: translateY(16px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.82); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes drawRing {
+          from { stroke-dashoffset: 251; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes fadeScaleIn {
+          from { opacity: 0; transform: scale(0.4); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
         .slide-up { animation: slideUp 0.35s ease-out both; }
       `}</style>
 
-      {/* Header */}
+      {/* ── Success Modal Overlay ── */}
+      {status === 'success' && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{ animation: 'fadeIn 0.2s ease-out both' }}
+        >
+          <div
+            className="bg-[#222222] border border-neutral-700 rounded-2xl p-8 max-w-sm w-full text-center space-y-5"
+            style={{ animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}
+          >
+            {/* Animated ring + checkmark */}
+            <div className="relative w-24 h-24 mx-auto">
+              <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                <circle
+                  cx="48" cy="48" r="40"
+                  fill="none"
+                  stroke="#2a2a2a"
+                  strokeWidth="5"
+                />
+                <circle
+                  cx="48" cy="48" r="40"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeDasharray="251"
+                  strokeDashoffset="251"
+                  style={{ animation: 'drawRing 0.65s ease-out 0.15s forwards' }}
+                />
+              </svg>
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ animation: 'fadeScaleIn 0.35s ease-out 0.6s both' }}
+              >
+                <svg
+                  className="w-10 h-10 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div style={{ animation: 'fadeIn 0.3s ease-out 0.7s both' }}>
+              <h2 className="text-xl font-semibold mb-1">Payment Successful</h2>
+              <p className="text-neutral-400 text-sm">
+                <span className="text-green-400 font-medium">
+                  ₦{parsedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                </span>{' '}
+                has been deposited
+              </p>
+            </div>
+
+            {/* Reference */}
+            {successRef && (
+              <div
+                className="bg-[#2a2a2a] border border-neutral-800 rounded-xl p-3 text-left"
+                style={{ animation: 'fadeIn 0.3s ease-out 0.85s both' }}
+              >
+                <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
+                  Reference
+                </div>
+                <div className="font-mono text-xs text-neutral-400 break-all">{successRef}</div>
+              </div>
+            )}
+
+            <p
+              className="text-xs text-neutral-600"
+              style={{ animation: 'fadeIn 0.3s ease-out 0.9s both' }}
+            >
+              Your balance will update once our server confirms the payment.
+            </p>
+
+            {/* CTA */}
+            <div
+              className="grid grid-cols-2 gap-3"
+              style={{ animation: 'fadeIn 0.3s ease-out 1s both' }}
+            >
+              <button
+                onClick={() => { setStatus('idle'); setAmount(''); setSuccessRef(null); }}
+                className="h-11 bg-[#2a2a2a] hover:bg-[#333] border border-neutral-700 rounded-xl text-sm font-medium transition-all active:scale-95"
+              >
+                New Deposit
+              </button>
+              <Link
+                href="/dashboard"
+                className="h-11 bg-green-500 hover:bg-green-600 rounded-xl text-sm font-medium transition-all active:scale-95 flex items-center justify-center"
+              >
+                Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Header ── */}
       <div className="border-b border-neutral-800">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
           <Link
@@ -193,7 +267,9 @@ export default function PaymentPage() {
         <div className="bg-[#262626] border border-neutral-700 rounded-2xl p-6 space-y-4">
           <label className="text-sm text-neutral-400 block">Enter amount</label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-neutral-400 select-none">₦</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-neutral-400 select-none">
+              ₦
+            </span>
             <input
               type="number"
               inputMode="decimal"
