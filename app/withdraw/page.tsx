@@ -42,11 +42,29 @@ export default function Withdraw() {
   const [newAccName, setNewAccName]     = useState('');
   const [resolving, setResolving]       = useState(false);
   const [resolveErr, setResolveErr]     = useState('');
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [lockedUntil, setLockedUntil]   = useState<number | null>(null);
   const [addingBank, setAddingBank]     = useState(false);
+
+  // Countdown display for lockout
+  const [lockCountdown, setLockCountdown] = useState('');
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const diff = lockedUntil - Date.now();
+      if (diff <= 0) { setLockedUntil(null); setResolveErr(''); return; }
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setLockCountdown(`${h}h ${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
 
   useEffect(() => onAuthStateChanged(auth, u => { if (u) setUid(u.uid); }), []);
 
-  // ── Fetch bank list via our API route (keeps secret key server-side) ───────
   useEffect(() => {
     fetch('/api/paystack-banks')
       .then(r => r.json())
@@ -65,34 +83,48 @@ export default function Withdraw() {
     return () => { u1(); u2(); };
   }, [uid]);
 
-  // ── Auto-resolve account name when 10 digits + bank selected ──────────────
+  // ── Auto-resolve with 800ms debounce ──────────────────────────────────────
   useEffect(() => {
     if (newAccNo.length !== 10 || !newBankCode) {
       setNewAccName('');
-      setResolveErr('');
+      if (!lockedUntil) setResolveErr('');
       return;
     }
+    if (lockedUntil && Date.now() < lockedUntil) return; // locked — don't call
 
-    let cancelled = false;
-    setResolving(true);
     setNewAccName('');
     setResolveErr('');
 
-    fetch(`/api/resolve-account?account_number=${newAccNo}&bank_code=${newBankCode}`)
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled) return;
-        if (d.status && d.data?.account_name) {
-          setNewAccName(d.data.account_name);
-        } else {
-          setResolveErr('Account not found. Check the number and bank.');
-        }
-      })
-      .catch(() => { if (!cancelled) setResolveErr('Could not verify account.'); })
-      .finally(() => { if (!cancelled) setResolving(false); });
+    // Debounce: wait 800ms after last change before firing
+    const timer = setTimeout(async () => {
+      if (!uid) return;
+      setResolving(true);
+      try {
+        const res  = await fetch(`/api/resolve-account?account_number=${newAccNo}&bank_code=${newBankCode}&uid=${uid}`);
+        const data = await res.json();
 
-    return () => { cancelled = true; };
-  }, [newAccNo, newBankCode]);
+        if (data.status && data.data?.account_name) {
+          setNewAccName(data.data.account_name);
+          setAttemptsLeft(null);
+          setLockedUntil(null);
+          setResolveErr('');
+        } else if (data.locked) {
+          setLockedUntil(data.lockedUntil);
+          setAttemptsLeft(0);
+          setResolveErr(data.error);
+        } else {
+          setResolveErr(data.error ?? 'Account not found. Check the number and bank.');
+          if (typeof data.attemptsLeft === 'number') setAttemptsLeft(data.attemptsLeft);
+        }
+      } catch {
+        setResolveErr('Could not verify account. Check your connection.');
+      } finally {
+        setResolving(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [newAccNo, newBankCode, uid, lockedUntil]);
 
   const parsed   = parseFloat(amount) || 0;
   const txFee    = calcFee(parsed);
@@ -133,7 +165,7 @@ export default function Withdraw() {
     setAddingBank(false); setShowAdd(false);
   };
 
-  const resetAdd = () => { setNewBankCode(''); setNewAccNo(''); setNewAccName(''); setResolveErr(''); setShowAdd(false); };
+  const resetAdd = () => { setNewBankCode(''); setNewAccNo(''); setNewAccName(''); setResolveErr(''); setAttemptsLeft(null); setShowAdd(false); };
 
   return (
     <div className="min-h-screen bg-[#111111] text-white">
@@ -278,33 +310,50 @@ export default function Withdraw() {
               {/* Account name — auto-resolved */}
               <div>
                 <label className="text-xs text-neutral-600 uppercase tracking-wider mb-1.5 block">Account Name</label>
-                <div className={`w-full h-12 rounded-xl border px-4 flex items-center transition-all
+                <div className={`w-full min-h-[3rem] rounded-xl border px-4 flex items-center transition-all
                   ${newAccName
                     ? 'border-green-500/40 bg-green-500/5'
+                    : lockedUntil && Date.now() < lockedUntil
+                    ? 'border-red-500/30 bg-red-500/5'
                     : resolveErr
                     ? 'border-red-500/40 bg-red-500/5'
                     : 'border-neutral-800 bg-[#222]'}`}>
                   {resolving ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 py-3">
                       <div className="w-4 h-4 border-2 border-neutral-600 border-t-neutral-300 rounded-full animate-spin shrink-0" />
                       <span className="text-sm text-neutral-500">Verifying account…</span>
                     </div>
                   ) : newAccName ? (
-                    <div className="flex items-center gap-2 w-full">
+                    <div className="flex items-center gap-2 w-full py-3">
                       <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="text-sm font-semibold text-green-400 truncate">{newAccName}</span>
                     </div>
+                  ) : lockedUntil && Date.now() < lockedUntil ? (
+                    <div className="py-3 w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-5a4 4 0 100-8 4 4 0 000 8z" />
+                        </svg>
+                        <span className="text-sm text-red-400 font-medium">Account lookup locked</span>
+                      </div>
+                      <p className="text-xs text-neutral-600 ml-6">Unlocks in <span className="text-neutral-400 font-mono">{lockCountdown}</span></p>
+                    </div>
                   ) : resolveErr ? (
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span className="text-sm text-red-400">{resolveErr}</span>
+                    <div className="py-3 w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span className="text-sm text-red-400">{resolveErr}</span>
+                      </div>
+                      {attemptsLeft !== null && attemptsLeft > 0 && (
+                        <p className="text-xs text-neutral-600 ml-6">{attemptsLeft} attempt{attemptsLeft !== 1 ? 's' : ''} left before 5-hour lockout</p>
+                      )}
                     </div>
                   ) : (
-                    <span className="text-sm text-neutral-600">
+                    <span className="text-sm text-neutral-600 py-3">
                       {newBankCode && newAccNo.length < 10
                         ? `Enter ${10 - newAccNo.length} more digit${10 - newAccNo.length !== 1 ? 's' : ''}…`
                         : 'Select bank and enter account number'}
@@ -314,7 +363,7 @@ export default function Withdraw() {
               </div>
 
               <button onClick={handleAddBank}
-                disabled={addingBank || !newBankCode || newAccNo.length !== 10 || !newAccName || !!resolveErr}
+                disabled={addingBank || !newBankCode || newAccNo.length !== 10 || !newAccName || !!resolveErr || !!(lockedUntil && Date.now() < lockedUntil)}
                 className="w-full h-12 bg-green-500 hover:bg-green-600 rounded-xl font-semibold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed mt-1">
                 {addingBank
                   ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</>
@@ -333,6 +382,7 @@ export default function Withdraw() {
           <p className="text-sm text-neutral-500 mt-0.5">Transfer to your bank account</p>
         </div>
 
+      
         {/* Balance */}
         <div className="bg-[#1a1a1a] border border-neutral-800/60 rounded-2xl p-5 flex items-center justify-between">
           {loadP ? <><SK className="h-5 w-28" /><SK className="h-8 w-36" /></> : (
@@ -350,7 +400,7 @@ export default function Withdraw() {
           )}
         </div>
 
-      {/* Amount input */}
+        {/* Amount input */}
         <div className="bg-[#1a1a1a] border border-neutral-800/60 rounded-2xl p-5 space-y-4">
           <p className="text-[10px] uppercase tracking-wider text-neutral-600 font-medium">Amount</p>
           <div className="relative">
