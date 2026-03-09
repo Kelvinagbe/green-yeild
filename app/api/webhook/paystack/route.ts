@@ -3,7 +3,7 @@
 // Paystack sends a POST here on every payment event.
 // We verify the signature, then on `charge.success` we:
 //   1. Verify the transaction via Paystack's API
-//   2. Write the transaction + update balance in Firebase Admin
+//   2. Write the transaction + update balance in Firebase Admin 
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
