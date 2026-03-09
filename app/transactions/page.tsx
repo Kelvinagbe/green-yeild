@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ref, onValue } from 'firebase/database';
@@ -179,7 +179,7 @@ function TxDetailSheet({ tx, onClose }: { tx: Tx; onClose: () => void }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function Transactions() {
+function TransactionsInner() {
   const searchParams = useSearchParams();
   const deepLinkId   = searchParams.get('id');
 
@@ -333,5 +333,17 @@ export default function Transactions() {
 
       {selected && <TxDetailSheet tx={selected} onClose={() => setSelected(null)} />}
     </div>
+  );
+}
+
+export default function Transactions() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-neutral-700 border-t-neutral-400 rounded-full animate-spin" />
+      </div>
+    }>
+      <TransactionsInner />
+    </Suspense>
   );
 }
